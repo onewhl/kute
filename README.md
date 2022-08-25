@@ -7,16 +7,15 @@ Collects unit tests from Java repositories.
 1. Clone the repository
 
    ```git clone https://github.com/onewhl/kut```
-2. Build jar file
+2. Build jar file ```./gradlew shadowJar```, it will appear in the directory ```kut/build/libs```
 
-   ```./gradlew shadowJar```, it will appear in the directory ```kut/build/libs```
 3. Run the command
 
-   ```java -jar ./build/libs/kut-1.0-SNAPSHOT-all.jar --path="path/to/project" --output="path/to/result/file"```
+   ```java -jar ./build/libs/kut-1.0-SNAPSHOT-all.jar --projects="path/to/projects/file" --output="path/to/result/file"```
 
 ### Supported options
 
 ```
-  --path          Path to the project to analyze.
+  --projects      Path to the file with paths to the projects to analyze.
   --output        Path to put file with results to.
 ```

@@ -12,31 +12,39 @@ import java.io.FileOutputStream
 class Runner : CliktCommand() {
     private val logger = KotlinLogging.logger {}
 
-    //TODO: provide a path to the file with projects
     //TODO: add an argument with list of test frameworks to work with
-    private val path by option(help = "Path to project").file(mustExist = true, canBeDir = true).required()
+    private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
+        .required()
     private val output by option(help = "Path to output directory").file(canBeFile = true).required()
 
     override fun run() {
-        //extract all test methods from Java test files in the project
-        logger.info { "Start collecting Java test files..." }
-
-        val javaFiles = extractJavaFiles(path)
-        logger.info { "Found ${javaFiles.size} Java files." }
-
-        val testFiles = getTestFiles(javaFiles)
-        logger.info { "Found ${testFiles.size} test files." }
-
-        val testMethods = getTestMethods(testFiles)
-        logger.info { "Found ${testMethods.size} test methods." }
-
-        //collect metadata about all test methods in the project
-        logger.info { "Start collecting metadata about test methods..." }
         val methodInfos = mutableListOf<MethodInfo>()
-        testMethods.forEach { m ->
-            methodInfos.add(
-                MethodInfo(m.nameAsString, getBody(m), getComment(m), getDisplayName(m))
-            )
+
+        projects.forEachLine {
+            logger.info { "Start processing project $it" }
+
+            //extract all test methods from Java test files in the project
+            logger.info { "Start collecting Java test files..." }
+
+            val javaFiles = extractJavaFiles(File(it))
+            logger.info { "Found ${javaFiles.size} Java files." }
+
+            val testFiles = getTestFiles(javaFiles)
+            logger.info { "Found ${testFiles.size} test files." }
+
+            val testMethods = getTestMethods(testFiles)
+            logger.info { "Found ${testMethods.size} test methods." }
+
+            //collect metadata about all test methods in the project
+            logger.info { "Start collecting metadata about test methods..." }
+
+            testMethods.forEach { m ->
+                methodInfos.add(
+                    MethodInfo(it, m.nameAsString, getBody(m), getComment(m), getDisplayName(m))
+                )
+            }
+
+            logger.info { "Finished processing files in $it" }
         }
 
         //write results to the provided file
