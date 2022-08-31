@@ -1,10 +1,7 @@
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ParserConfiguration
 import com.github.javaparser.ast.CompilationUnit
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.ast.expr.MethodCallExpr
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import com.github.javaparser.symbolsolver.JavaSymbolSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.MemoryTypeSolver
 import mu.KotlinLogging
@@ -21,10 +18,7 @@ class TestExtractor(
     private val parser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(MemoryTypeSolver())))
 
     override fun run() {
-        logger.info { "Start processing project $path" }
-
-        //extract all test methods from Java test files in the project
-        logger.info { "Start collecting Java test files..." }
+        logger.info { "Start processing files in module: $path." }
 
         val javaFiles: List<File> = extractJavaFiles(path)
 
@@ -34,38 +28,46 @@ class TestExtractor(
 
         val parsedFilesInTestDir: List<CompilationUnit> = parseFiles(classesInTestDir)
 
-        val filesWithTestImports: List<CompilationUnit> = getTestFiles(parsedFilesInTestDir)
+        val testFiles: List<CompilationUnit> = getTestFiles(parsedFilesInTestDir)
 
-        val testMethodInfos = filesWithTestImports
+        val testMethodInfos = testFiles
             .flatMap { parseTestMethodsFromClass(it) }
             .toList()
+            .also { logger.info { "Found ${it.size} test methods." } }
 
-        logger.info { "Found ${testMethodInfos.size} test methods." }
-
-        logger.info { "Finished processing files in $path" }
+        //TODO: come up with a way to store results
+        logger.info { "Finished processing files in module: $path." }
     }
 
+    //TODO: write results to DB after each creation of TestMethodInfo?
+    //TODO: isolate mapping algorithm, make it configurable -- run mapping or not
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
         val sourceClass = findSourceClass(testClass)
         val testClassInfo = TestClassInfo(testClass.primaryTypeName.orElse(""), module.projectInfo, module, sourceClass)
         val methodDeclarations = testClass.findAll(MethodDeclaration::class.java)
-        return methodDeclarations.filter { m -> m.annotations.any { it.nameAsString == "Test" || it.nameAsString == "ParameterizedTest" } }
+
+        return methodDeclarations
+            .filter { it.annotations.any { it.nameAsString == "Test" || it.nameAsString == "ParameterizedTest" } }
+            //TODO: make it configurable
+            .filter { it.annotations.none { it.nameAsString == "Disabled" || it.nameAsString == "Ignored" } }
             .map { m ->
-                val sourceMethodInfo = findSourceMethod(m, sourceClass)
+                val sourceMethodInfo =
+                    sourceClass?.let { MethodMapper.findSourceMethod(m, it, classNameToFile, parser) }
                 TestMethodInfo(
                     m.nameAsString,
                     getBody(m),
                     getComment(m),
                     getDisplayName(m),
-                    checkParameterized(m),
+                    isParameterized(m),
                     testClassInfo,
                     sourceMethodInfo
                 )
             }
+            .also { logger.debug { "Parsed test methods in test class ${testClass.primaryTypeName}." } }
     }
 
-    // TODO implement
-    private fun checkParameterized(method: MethodDeclaration): Boolean = false
+    private fun isParameterized(method: MethodDeclaration): Boolean =
+        method.annotations.any { it.nameAsString == "ParametrisedTest" }
 
     private fun findSourceClass(testClass: CompilationUnit) = testClass.primaryTypeName.orElse(null)
         .let { if (it.startsWith("Test", ignoreCase = true)) it.substring("Test".length) else it }
@@ -76,66 +78,9 @@ class TestExtractor(
         ?.let { SourceClassInfo(it, module) }
         .also {
             if (it != null && classNameToFile[it.name]!!.size > 1) {
-                logger.warn { "Multiple classes found with name $it.name: ${classNameToFile[it.name]}" }
+                logger.warn { "Multiple classes found with name $it.name: ${classNameToFile[it.name]}." }
             }
         }
-
-    private fun findSourceMethod(testMethod: MethodDeclaration, sourceClass: SourceClassInfo?): SourceMethodInfo? {
-        sourceClass?.name?.let { className ->
-            val files = classNameToFile[className]!!
-            parser.parse(files[0]).result.orElse(null)?.let {
-                val expectedSourceMethod =
-                    testMethod.nameAsString.removePrefix("test").replaceFirstChar { it.lowercase() }
-                val methods = it.findAll(MethodDeclaration::class.java)
-                    .groupBy { it.nameAsString }
-
-                val innerClasses = emptyMap<String, ClassOrInterfaceDeclaration>() // TODO find inner classes correctly
-                // 1. if name of the test method equals name of source method
-                methods[expectedSourceMethod]?.takeIf { it.size == 1 }?.let {
-                    return SourceMethodInfo(expectedSourceMethod, getBody(it[0]), sourceClass)
-                }
-
-                methods.forEach {
-                    if (expectedSourceMethod.contains(it.key)) {
-                        return SourceMethodInfo(expectedSourceMethod, getBody(it.value[0]), sourceClass)
-                    }
-                }
-
-                // 2. if name of the inner class equals name of the test method, e.g. testBuilder
-                innerClasses[expectedSourceMethod]?.let {
-                    return SourceMethodInfo(it.nameAsString, "", sourceClass)
-                }
-
-                // 3. if method in a source class is called from test method
-                val methodCallVisitor = MethodCallVisitor(className, methods)
-                testMethod.accept(methodCallVisitor, null)
-                val resolvedSourceMethod = methodCallVisitor.sourceMethodCall
-                if (resolvedSourceMethod != null) {
-                    return SourceMethodInfo(expectedSourceMethod, getBody(resolvedSourceMethod), sourceClass)
-                }
-
-            }
-        }
-        return null
-    }
-
-    internal class MethodCallVisitor(
-        private val className: String,
-        private val sourceMethods: Map<String, List<MethodDeclaration>>
-    ) : VoidVisitorAdapter<Void?>() {
-        var sourceMethodCall: MethodDeclaration? = null
-
-        override fun visit(methodCall: MethodCallExpr, arg: Void?) {
-            val nameAsString =
-                methodCall.nameAsString //TODO: it gets the last method call in chain, we should process all of them
-            sourceMethods[nameAsString]?.let {
-                it.firstOrNull { it.parameters.size == methodCall.arguments.size }?.let {
-                    sourceMethodCall = it
-                }
-            }
-            super.visit(methodCall, arg)
-        }
-    }
 
     private fun getTestFiles(projectFiles: List<CompilationUnit>): List<CompilationUnit> =
         projectFiles
@@ -146,6 +91,7 @@ class TestExtractor(
         .map { parser.parse(it).result }
         .filter { it.isPresent }
         .map { it.get() }.toList()
+        .also { logger.debug { "Parsed files in /test/ dir." } }
 
     /**
      * Checks if a file is a test file or not by searching for JUnit or TestNG imports.
@@ -159,13 +105,13 @@ class TestExtractor(
     }
 
     /**
-     * Collect all Java files from the project.
+     * Collect all Java files from the module.
      */
-    private fun extractJavaFiles(project: File): List<File> = project
+    private fun extractJavaFiles(module: File): List<File> = module
         .walkTopDown()
         .filter { it.extension == "java" }
         .toList()
-        .also { logger.info { "Found ${it.size} Java files." } }
+        .also { logger.info { "Found ${it.size} Java files in module ${module.path}." } }
 
     private fun findJavaFilesInTestDirectory(javaFiles: Collection<File>): Collection<File> =
         if (buildSystem == BuildSystem.MAVEN || buildSystem == BuildSystem.GRADLE) {

@@ -1,4 +1,7 @@
+import mu.KotlinLogging
 import java.io.File
+
+private val logger = KotlinLogging.logger {}
 
 enum class BuildSystem {
     GRADLE {
@@ -11,6 +14,7 @@ enum class BuildSystem {
                     .map { it to File(projectPath, it) }
                     .toMap()
                     .takeIf { it.isNotEmpty() }
+                    .also { logger.debug { "Found ${it?.size} modules in project $projectPath." } }
                     ?: super.getProjectModules(projectPath)
             }
         }
@@ -24,6 +28,7 @@ enum class BuildSystem {
                 .map { it to File(projectPath, it) }
                 .toMap()
                 .takeIf { it.isNotEmpty() }
+                .also { logger.debug { "Found ${it?.size} modules in project $projectPath." } }
                 ?: super.getProjectModules(projectPath)
         }
     },
@@ -31,6 +36,7 @@ enum class BuildSystem {
 
     open fun getProjectModules(projectPath: String): Map<String, File> =
         File(projectPath).let { mapOf(it.name to it) }
+            .also { logger.debug { "Found ${it.size} modules in project $projectPath." } }
 
     open fun getTestFilesRoot(projectPath: File) = projectPath
 }
@@ -45,5 +51,5 @@ fun detectBuildSystem(projectDirPath: String): BuildSystem {
             BuildSystem.MAVEN
         }
         else -> BuildSystem.OTHER
-    }
+    }.also { logger.debug { "Detected build system in $projectDirPath is ${it.name}." } }
 }

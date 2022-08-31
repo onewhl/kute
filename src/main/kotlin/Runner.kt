@@ -14,6 +14,8 @@ class Runner : CliktCommand() {
     private val output by option(help = "Path to output directory").file(canBeFile = true).required()
 
     override fun run() {
+        logger.info { "Start processing projects in ${projects.path}..." }
+
         projects.forEachLine { path ->
             val buildSystem = detectBuildSystem(path)
             val modules = buildSystem.getProjectModules(path)
@@ -24,6 +26,8 @@ class Runner : CliktCommand() {
                 TestExtractor(pathAsFile, ModuleInfo(it.key, projectInfo))
             }.forEach { it.run() }
         }
+
+        logger.info { "Finished processing projects." }
     }
 }
 
