@@ -1,5 +1,7 @@
+import kotlinx.serialization.Serializable
 import java.util.concurrent.atomic.AtomicLong
 
+@Serializable
 data class TestMethodInfo(
     var name: String,
     var body: String,
@@ -11,6 +13,7 @@ data class TestMethodInfo(
     val id: Long = IdGenerator.testMethodCounter.getAndIncrement()
 )
 
+@Serializable
 data class TestClassInfo(
     val name: String,
     val projectInfo: ProjectInfo,
@@ -19,6 +22,7 @@ data class TestClassInfo(
     val id: Long = IdGenerator.testClassCounter.getAndIncrement()
 )
 
+@Serializable
 data class SourceMethodInfo(
     val name: String,
     val body: String,
@@ -26,18 +30,21 @@ data class SourceMethodInfo(
     val id: Long = IdGenerator.sourceMethodCounter.getAndIncrement()
 )
 
+@Serializable
 data class SourceClassInfo(
     val name: String,
     val moduleInfo: ModuleInfo,
     val id: Long = IdGenerator.sourceClassCounter.getAndIncrement()
 )
 
+@Serializable
 data class ProjectInfo(
     val name: String,
     val buildSystem: BuildSystem,
     val id: Long = IdGenerator.projectCounter.getAndIncrement(),
 )
 
+@Serializable
 data class ModuleInfo(
     val name: String,
     val projectInfo: ProjectInfo,

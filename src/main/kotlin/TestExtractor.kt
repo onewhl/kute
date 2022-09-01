@@ -9,7 +9,8 @@ import java.io.File
 
 class TestExtractor(
     val path: File,
-    val module: ModuleInfo
+    val module: ModuleInfo,
+    val writer: ResultWriter
 ) : Runnable {
     private val logger = KotlinLogging.logger {}
 
@@ -53,7 +54,8 @@ class TestExtractor(
             .map { m ->
                 val sourceMethodInfo =
                     sourceClass?.let { MethodMapper.findSourceMethod(m, it, classNameToFile, parser) }
-                TestMethodInfo(
+
+                val testMethodInfo = TestMethodInfo(
                     m.nameAsString,
                     getBody(m),
                     getComment(m),
@@ -62,6 +64,10 @@ class TestExtractor(
                     testClassInfo,
                     sourceMethodInfo
                 )
+
+                writer.writeTestMethod(testMethodInfo)
+
+                testMethodInfo
             }
             .also { logger.debug { "Parsed test methods in test class ${testClass.primaryTypeName}." } }
     }
@@ -105,7 +111,7 @@ class TestExtractor(
     }
 
     /**
-     * Collect all Java files from the module.
+     * Collects all Java files from the module.
      */
     private fun extractJavaFiles(module: File): List<File> = module
         .walkTopDown()

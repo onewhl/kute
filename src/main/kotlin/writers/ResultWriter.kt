@@ -3,9 +3,6 @@ import java.io.OutputStream
 
 interface ResultWriter : Closeable {
     fun writeTestMethod(method: TestMethodInfo)
-    fun writeSourceMethod(method: SourceMethodInfo)
-    fun writeTestClass(classInfo: TestClassInfo)
-    fun writeSourceClass(sourceClass: SourceClassInfo)
 }
 
 class CsvResultWriter : ResultWriter {
@@ -22,18 +19,6 @@ class CsvResultWriter : ResultWriter {
     }
 
     override fun writeTestMethod(method: TestMethodInfo) {
-        TODO("Not yet implemented")
-    }
-
-    override fun writeSourceMethod(method: SourceMethodInfo) {
-        TODO("Not yet implemented")
-    }
-
-    override fun writeTestClass(classInfo: TestClassInfo) {
-        TODO("Not yet implemented")
-    }
-
-    override fun writeSourceClass(sourceClass: SourceClassInfo) {
         TODO("Not yet implemented")
     }
 

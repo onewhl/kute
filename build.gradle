@@ -2,6 +2,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.7.10'
     id 'application'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.7.10'
 }
 
 group = 'org.example'
@@ -19,6 +20,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-simple:2.0.0'
     implementation 'org.slf4j:slf4j-api:2.0.0'
     implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.24.4'
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0"
 }
 
 test {
