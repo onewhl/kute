@@ -12,6 +12,9 @@ import java.nio.file.Path
 
 private const val separator = ','.code
 
+/**
+ * Writes results in JSON format if [OutputType.JSON] is chosen.
+ */
 class JsonResultWriter(path: Path) : ResultWriter {
     private val stream: OutputStream = BufferedOutputStream(Files.newOutputStream(path)).also { it.write('['.code) }
     private var hasWrittenElement = false

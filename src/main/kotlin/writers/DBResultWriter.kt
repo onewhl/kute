@@ -20,14 +20,15 @@ import kotlin.reflect.KProperty0
 
 private const val BATCH_SIZE = 100
 
-class DBResultWriter(connectionString: String, userName: String, password: String) : ResultWriter {
+/**
+ * Writes results in database if [OutputType.DATABASE] is chosen.
+ */
+class DBResultWriter(connectionString: String) : ResultWriter {
     private val batch = ArrayList<TestMethodInfo>(BATCH_SIZE)
     private var lastRecordedValues: LastRecordedValues = LastRecordedValues()
 
     init {
-        Database.connect(
-            connectionString, user = userName, password = password
-        )
+        Database.connect(connectionString)
 
         SchemaUtils.create(
             TestMethodsTable,
@@ -111,7 +112,7 @@ class DBResultWriter(connectionString: String, userName: String, password: Strin
     }
 
     /**
-     * To avoid entity duplication.
+     * Checks if the values is already in DB to avoid entity duplication.
      */
     private fun <T> insertIfNew(
         value: T,
@@ -132,6 +133,11 @@ class DBResultWriter(connectionString: String, userName: String, password: Strin
         }
     }
 
+    /**
+     * Stores last values' ids to avoid duplication.
+     *
+     * The tool handles methods in the sorted by project/module/class way.
+     */
     private data class LastRecordedValues(
         val sourceClassInfo: ValueAndId<SourceClassInfo> = ValueAndId(),
         val classInfo: ValueAndId<TestClassInfo> = ValueAndId(),

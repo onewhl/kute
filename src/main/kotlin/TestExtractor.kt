@@ -7,6 +7,9 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.MemoryTypeSolve
 import mu.KotlinLogging
 import java.io.File
 
+/**
+ * Extracts tests files, finds test method in them, and collects metadata.
+ */
 class TestExtractor(
     val path: File,
     val module: ModuleInfo,
@@ -36,12 +39,9 @@ class TestExtractor(
             .toList()
             .also { logger.info { "Found ${it.size} test methods." } }
 
-        //TODO: come up with a way to store results
         logger.info { "Finished processing files in module: $path." }
     }
 
-    //TODO: write results to DB after each creation of TestMethodInfo?
-    //TODO: isolate mapping algorithm, make it configurable -- run mapping or not
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
         val sourceClass = findSourceClass(testClass)
         val testClassInfo = TestClassInfo(testClass.primaryTypeName.orElse(""), module.projectInfo, module, sourceClass)

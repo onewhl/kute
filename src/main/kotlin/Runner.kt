@@ -3,7 +3,9 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
 import mu.KotlinLogging
+import writers.DBResultWriter
 import writers.JsonResultWriter
+import writers.OutputType
 import java.io.File
 
 class Runner : CliktCommand() {
@@ -12,15 +14,21 @@ class Runner : CliktCommand() {
     //TODO: add an argument with list of test frameworks to work with
     private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
         .required()
-    private val output by option(help = "Path to output directory").file(canBeFile = true).required()
+    private val outputType by option(help = "Format to store results in. Supported formats: JSON, Database").required()
+    private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
+    private val connection by option(help = "")
 
     override fun run() {
         logger.info { "Start processing projects in ${projects.path}..." }
 
-        //TODO: make it configurable
-        val resultsWriter = JsonResultWriter(getOutputFile().toPath())
+        val resultWriter = getResultWriter()
 
-        resultsWriter.use {
+        if (resultWriter == null) {
+            logger.error { "Output path is not defined. Please, provide --outputPath option with a value." }
+            return
+        }
+
+        resultWriter.use {
             projects.forEachLine { path ->
                 val buildSystem = detectBuildSystem(path)
                 val modules = buildSystem.getProjectModules(path)
@@ -28,7 +36,7 @@ class Runner : CliktCommand() {
                 val projectInfo = ProjectInfo(pathAsFile.name, buildSystem)
 
                 modules.map {
-                    TestExtractor(pathAsFile, ModuleInfo(it.key, projectInfo), resultsWriter)
+                    TestExtractor(pathAsFile, ModuleInfo(it.key, projectInfo), resultWriter)
                 }.forEach { it.run() }
             }
         }
@@ -36,11 +44,24 @@ class Runner : CliktCommand() {
         logger.info { "Finished processing projects." }
     }
 
+    private fun getResultWriter() = when (outputType) {
+        OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
+        OutputType.DATABASE.value -> {
+            if (connection == null) {
+                logger.error { "Connection is not defined. Please, provide --connection option with a value." }
+                null
+            } else {
+                DBResultWriter(connection!!)
+            }
+        }
+        else -> null
+    }
+
     private fun getOutputFile(): File {
-        val outputFile = if (output.isDirectory) {
-            File(output, "results.json")
+        val outputFile = if (outputPath.isDirectory) {
+            File(outputPath, "results.json")
         } else {
-            output
+            outputPath
         }
         return outputFile
     }
