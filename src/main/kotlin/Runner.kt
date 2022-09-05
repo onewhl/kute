@@ -3,7 +3,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
 import mu.KotlinLogging
-import writers.JsonWriter
+import writers.JsonResultWriter
 import java.io.File
 
 class Runner : CliktCommand() {
@@ -18,7 +18,7 @@ class Runner : CliktCommand() {
         logger.info { "Start processing projects in ${projects.path}..." }
 
         //TODO: make it configurable
-        val resultsWriter = JsonWriter(getOutputFile().toPath())
+        val resultsWriter = JsonResultWriter(getOutputFile().toPath())
 
         resultsWriter.use {
             projects.forEachLine { path ->

@@ -12,8 +12,8 @@ import java.nio.file.Path
 
 private const val separator = ','.code
 
-class JsonWriter(dir: Path) : ResultWriter {
-    private val stream: OutputStream = BufferedOutputStream(Files.newOutputStream(dir)).also { it.write('['.code) }
+class JsonResultWriter(path: Path) : ResultWriter {
+    private val stream: OutputStream = BufferedOutputStream(Files.newOutputStream(path)).also { it.write('['.code) }
     private var hasWrittenElement = false
 
     @OptIn(ExperimentalSerializationApi::class)
