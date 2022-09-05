@@ -14,7 +14,7 @@ class Runner : CliktCommand() {
     //TODO: add an argument with list of test frameworks to work with
     private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
         .required()
-    private val outputType by option(help = "Format to store results in. Supported formats: JSON, Database").required()
+    private val outputFormat by option(help = "Format to store results in. Supported formats: json, database").required()
     private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
     private val connection by option(help = "")
 
@@ -44,7 +44,7 @@ class Runner : CliktCommand() {
         logger.info { "Finished processing projects." }
     }
 
-    private fun getResultWriter() = when (outputType) {
+    private fun getResultWriter() = when (outputFormat) {
         OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
         OutputType.DATABASE.value -> {
             if (connection == null) {

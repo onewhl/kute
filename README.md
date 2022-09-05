@@ -11,11 +11,13 @@ Collects unit tests from Java repositories.
 
 3. Run the command
 
-   ```java -jar ./build/libs/kut-1.0-SNAPSHOT-all.jar --projects="path/to/projects/file" --output="path/to/result/file"```
+   ```java -jar ./build/libs/kut-1.0-SNAPSHOT-all.jar --projects="path/to/projects/file" --outputFormat="json" --outputPath="path/to/result/file"```
 
 ### Supported options
 
-```
-  --projects      Path to the file with paths to the projects to analyze.
-  --output        Path to put file with results to.
-```
+| Name                 | Description                                                                         |
+|----------------------|-------------------------------------------------------------------------------------|
+| ```--projects```     | Path to the file with paths to the projects to analyze.                             |
+| ```--outputFormat``` | Format to store results in. Supported types: ```json```, ```database```, ```csv```. |
+| ```--outputPath```   | Path to put file with results to.                                                   |
+| ```--connection```   | Database URL. Should be provided in case when database output format is chosen.     |
