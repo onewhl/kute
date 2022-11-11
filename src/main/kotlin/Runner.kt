@@ -2,12 +2,11 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
-import com.github.javaparser.JavaParser
-import com.github.javaparser.ast.CompilationUnit
-import com.github.javaparser.ast.body.MethodDeclaration
 import mu.KotlinLogging
+import writers.DBResultWriter
+import writers.JsonResultWriter
+import writers.OutputType
 import java.io.File
-import java.io.FileOutputStream
 
 class Runner : CliktCommand() {
     private val logger = KotlinLogging.logger {}
@@ -15,101 +14,57 @@ class Runner : CliktCommand() {
     //TODO: add an argument with list of test frameworks to work with
     private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
         .required()
-    private val output by option(help = "Path to output directory").file(canBeFile = true).required()
+    private val outputFormat by option(help = "Format to store results in. Supported formats: json, database").required()
+    private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
+    private val connection by option(help = "")
 
     override fun run() {
-        val methodInfos = mutableListOf<MethodInfo>()
+        logger.info { "Start processing projects in ${projects.path}..." }
 
-        projects.forEachLine {
-            logger.info { "Start processing project $it" }
+        val resultWriter = getResultWriter()
 
-            //extract all test methods from Java test files in the project
-            logger.info { "Start collecting Java test files..." }
+        if (resultWriter == null) {
+            logger.error { "Output path is not defined. Please, provide --outputPath option with a value." }
+            return
+        }
 
-            val javaFiles = extractJavaFiles(File(it))
-            logger.info { "Found ${javaFiles.size} Java files." }
+        resultWriter.use {
+            projects.forEachLine { path ->
+                val buildSystem = detectBuildSystem(path)
+                val modules = buildSystem.getProjectModules(path)
+                val pathAsFile = File(path)
+                val projectInfo = ProjectInfo(pathAsFile.name, buildSystem)
 
-            val testFiles = getTestFiles(javaFiles)
-            logger.info { "Found ${testFiles.size} test files." }
-
-            val testMethods = getTestMethods(testFiles)
-            logger.info { "Found ${testMethods.size} test methods." }
-
-            //collect metadata about all test methods in the project
-            logger.info { "Start collecting metadata about test methods..." }
-
-            testMethods.forEach { m ->
-                methodInfos.add(
-                    MethodInfo(it, m.nameAsString, getBody(m), getComment(m), getDisplayName(m))
-                )
+                modules.map {
+                    TestExtractor(pathAsFile, ModuleInfo(it.key, projectInfo), resultWriter)
+                }.forEach { it.run() }
             }
-
-            logger.info { "Finished processing files in $it" }
         }
 
-        //write results to the provided file
-        logger.info { "Writing results to the file." }
-        FileOutputStream(output).apply {
-            writeCsv(
-                methodInfos
-            )
-        }
+        logger.info { "Finished processing projects." }
     }
 
-    /**
-     * Collects methods that have annotation Test.
-     */
-    private fun getTestMethods(testClasses: List<CompilationUnit>): MutableList<MethodDeclaration> {
-        val testMethods = mutableListOf<MethodDeclaration>()
-
-        testClasses
-            .map { it.findAll(MethodDeclaration::class.java) }
-            .forEach { methods ->
-                testMethods += methods
-                    .filter { m -> m.annotations.any { it.nameAsString == "Test" } }
-                    .toCollection(mutableListOf())
+    private fun getResultWriter() = when (outputFormat) {
+        OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
+        OutputType.DATABASE.value -> {
+            if (connection == null) {
+                logger.error { "Connection is not defined. Please, provide --connection option with a value." }
+                null
+            } else {
+                DBResultWriter(connection!!)
             }
-        return testMethods
-    }
-
-    private fun getTestFiles(projectFiles: List<File>): List<CompilationUnit> = projectFiles
-        .map { JavaParser().parse(it).result }
-        .filter { it.isPresent && isTestFile(it.get()) }
-        .map { it.get() }
-
-    /**
-     * Checks if a file is a test file or not by searching for JUnit or TestNG imports.
-     */
-    private fun isTestFile(file: CompilationUnit): Boolean {
-        return file.imports.any {
-            it.nameAsString.contains("org.junit") ||
-                    it.nameAsString.contains("org.testng")
         }
+        else -> null
     }
 
-    /**
-     * Collect all Java files from the project.
-     */
-    private fun extractJavaFiles(project: File): List<File> = project
-        .walkTopDown()
-        .filter { it.extension == "java" }
-        .toList()
-
-    private fun getComment(method: MethodDeclaration) = if (method.javadocComment.isPresent) {
-        method.javadocComment.get().content
-    } else {
-        ""
+    private fun getOutputFile(): File {
+        val outputFile = if (outputPath.isDirectory) {
+            File(outputPath, "results.json")
+        } else {
+            outputPath
+        }
+        return outputFile
     }
-
-    private fun getBody(m: MethodDeclaration): String = if (m.body.isPresent) {
-        m.body.get().toString()
-    } else {
-        ""
-    }
-
-    private fun getDisplayName(method: MethodDeclaration): String =
-        (method.annotations.find { a -> a.nameAsString == "DisplayName" }?.nameAsString) ?: ""
-
 }
 
 fun main(args: Array<String>) = Runner().main(args)
