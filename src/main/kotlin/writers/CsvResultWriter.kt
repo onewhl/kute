@@ -11,7 +11,7 @@ import java.nio.file.Path
 
 @OptIn(ExperimentalSerializationApi::class)
 class CsvResultWriter(path: Path) : ResultWriter {
-    private val csv = Csv { hasHeaderRecord = true }
+    private val csv = Csv(from = Csv.Rfc4180) { hasHeaderRecord = true }
     private val writer = Files.newBufferedWriter(path)
     private val encoder = EncoderProvider.getEncoder(csv, writer)
     private val serializer = csv.serializersModule.serializer<TestMethodInfo>()
