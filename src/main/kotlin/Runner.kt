@@ -3,6 +3,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
 import mu.KotlinLogging
+import writers.CsvResultWriter
 import writers.DBResultWriter
 import writers.JsonResultWriter
 import writers.OutputType
@@ -46,6 +47,7 @@ class Runner : CliktCommand() {
 
     private fun getResultWriter() = when (outputFormat) {
         OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
+        OutputType.CSV.value -> CsvResultWriter(getOutputFile().toPath())
         OutputType.DATABASE.value -> {
             if (connection == null) {
                 logger.error { "Connection is not defined. Please, provide --connection option with a value." }
@@ -59,7 +61,7 @@ class Runner : CliktCommand() {
 
     private fun getOutputFile(): File {
         val outputFile = if (outputPath.isDirectory) {
-            File(outputPath, "results.json")
+            File(outputPath, "results.${outputFormat}")
         } else {
             outputPath
         }
