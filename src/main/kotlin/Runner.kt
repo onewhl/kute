@@ -15,6 +15,7 @@ import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.Executor
 
+private val logger = KotlinLogging.logger {}
 class Runner : CliktCommand() {
     private val logger = KotlinLogging.logger {}
 
@@ -54,6 +55,11 @@ class Runner : CliktCommand() {
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
         override fun call(): File {
             val destination = File(targetDir, url.substringAfterLast('/').removeSuffix(".git"))
+            if (destination.isDirectory) {
+                logger.warn("$destination directory already exists and will be cleaned")
+                destination.deleteRecursively()
+            }
+            logger.info("Cloning Git repository $url to $destination")
             val git = Git.cloneRepository()
                 .setURI(url)
                 .setDirectory(destination)
