@@ -34,7 +34,7 @@ class Runner : CliktCommand() {
             val computeExecutor = Executor { command -> command.run() }
             logger.info { "Start processing projects in ${projects.path}..." }
             projects.forEachLine { path ->
-                if (path.startsWith("http") && path.endsWith(".git")) {
+                if (path.startsWith("http")) {
                     ioExecutor.execute {
                         val repoPath = GitRepoDownloadingTask(path, repoStorage).call()
                         computeExecutor.execute(
