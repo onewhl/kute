@@ -23,6 +23,9 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.0'
 
     implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.24.4'
+
+    implementation 'org.jetbrains.kotlin:kotlin-compiler-embeddable:1.7.21'
+
     implementation 'de.brudaswen.kotlinx.serialization:kotlinx-serialization-csv:2.0.0'
 
     implementation 'org.jetbrains.exposed:exposed-core:0.39.2'

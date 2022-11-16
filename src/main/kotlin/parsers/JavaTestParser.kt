@@ -1,45 +1,43 @@
-import com.github.javaparser.JavaParser
-import com.github.javaparser.ParserConfiguration
+package parsers
+
+import ModuleInfo
+import SourceClassInfo
+import TestClassInfo
+import TestMethodInfo
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.symbolsolver.JavaSymbolSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.MemoryTypeSolver
+import mappers.JavaMethodMeta
+import mappers.DelegatingMethodMapper
 import mu.KotlinLogging
 import java.io.File
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Extracts tests files, finds test method in them, and collects metadata.
  */
-class TestExtractor(
-    val path: File,
-    val module: ModuleInfo,
-    val writer: ResultWriter
-) : Runnable {
-    private val logger = KotlinLogging.logger {}
-
-    private val buildSystem = module.projectInfo.buildSystem
-    private lateinit var classNameToFile: Map<String, List<File>>
-    private val parser = JavaParser(ParserConfiguration().setSymbolResolver(JavaSymbolSolver(MemoryTypeSolver())))
-
-    override fun run() {
+class JavaTestParser(
+    private val path: File,
+    private val module: ModuleInfo,
+    private val classNameToFile: Map<String, List<File>>
+) : Parser {
+    override val language = Lang.JAVA
+    override fun process(files: List<File>): List<TestMethodInfo> {
         logger.info { "Start processing files in module: $path." }
+        files.count { it.extension == language.extension }
+            .let { logger.info { "Found: $it Java classes." } }
 
-        val javaFiles: List<File> = extractJavaFiles(path)
+        val filesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, path, files.stream())
+            .also { logger.info { "Found: ${it.size} Java test classes." } }
 
-        classNameToFile = javaFiles.groupBy { it.name.removeSuffix(".java") }
-
-        val classesInTestDir = findJavaFilesInTestDirectory(javaFiles)
-
-        val parsedFilesInTestDir: List<CompilationUnit> = parseFiles(classesInTestDir)
+        val parsedFilesInTestDir: List<CompilationUnit> = parseFiles(filesInTestDir)
 
         val testFiles: List<CompilationUnit> = getTestFiles(parsedFilesInTestDir)
 
-        val testMethodInfos = testFiles
+        return testFiles
             .flatMap { parseTestMethodsFromClass(it) }
             .toList()
-            .also { logger.info { "Found ${it.size} test methods." } }
-
-        logger.info { "Finished processing files in module: $path." }
+            .also { logger.info { "Finished processing files in module: $path. Found ${it.size} test methods." } }
     }
 
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
@@ -53,9 +51,11 @@ class TestExtractor(
             .filter { it.annotations.none { it.nameAsString == "Disabled" || it.nameAsString == "Ignored" } }
             .map { m ->
                 val sourceMethodInfo =
-                    sourceClass?.let { MethodMapper.findSourceMethod(m, it, classNameToFile, parser) }
+                    sourceClass?.let {
+                        DelegatingMethodMapper.findSourceMethod(JavaMethodMeta(m), it, classNameToFile)
+                    }
 
-                val testMethodInfo = TestMethodInfo(
+                TestMethodInfo(
                     m.nameAsString,
                     getBody(m),
                     getComment(m),
@@ -64,10 +64,6 @@ class TestExtractor(
                     testClassInfo,
                     sourceMethodInfo
                 )
-
-                writer.writeTestMethod(testMethodInfo)
-
-                testMethodInfo
             }
             .also { logger.debug { "Parsed test methods in test class ${testClass.primaryTypeName}." } }
     }
@@ -94,9 +90,7 @@ class TestExtractor(
             .also { logger.info { "Found ${it.size} test files." } }
 
     private fun parseFiles(projectFiles: Collection<File>) = projectFiles
-        .map { parser.parse(it).result }
-        .filter { it.isPresent }
-        .map { it.get() }.toList()
+        .mapNotNull { StaticJavaFileParser.parse(it) }
         .also { logger.debug { "Parsed files in /test/ dir." } }
 
     /**
@@ -109,24 +103,6 @@ class TestExtractor(
                     it.nameAsString.startsWith("org.testng")
         }
     }
-
-    /**
-     * Collects all Java files from the module.
-     */
-    private fun extractJavaFiles(module: File): List<File> = module
-        .walkTopDown()
-        .filter { it.extension == "java" }
-        .toList()
-        .also { logger.info { "Found ${it.size} Java files in module ${module.path}." } }
-
-    private fun findJavaFilesInTestDirectory(javaFiles: Collection<File>): Collection<File> =
-        if (buildSystem == BuildSystem.MAVEN || buildSystem == BuildSystem.GRADLE) {
-            val sep = File.separator
-            val testDirectory = File(path, "src${sep}test${sep}java")
-            javaFiles.filter { it.startsWith(testDirectory) }
-        } else {
-            javaFiles
-        }
 
     private fun getComment(method: MethodDeclaration) = if (method.javadocComment.isPresent) {
         method.javadocComment.get().content

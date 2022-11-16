@@ -6,6 +6,7 @@ private val logger = KotlinLogging.logger {}
 enum class BuildSystem {
     GRADLE {
         override fun getProjectModules(projectPath: String): Map<String, File> {
+            //TODO: process kts file as well
             val file = File(projectPath, "settings.gradle")
             return file.takeIf { file.isFile }.let {
                 "include\\s+'([^']+)'".toRegex()

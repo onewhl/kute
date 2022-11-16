@@ -3,6 +3,8 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.file
 import mu.KotlinLogging
+import parsers.Lang
+import parsers.ParserRunner
 import writers.CsvResultWriter
 import writers.DBResultWriter
 import writers.JsonResultWriter
@@ -20,16 +22,8 @@ class Runner : CliktCommand() {
     private val connection by option(help = "")
 
     override fun run() {
-        logger.info { "Start processing projects in ${projects.path}..." }
-
-        val resultWriter = getResultWriter()
-
-        if (resultWriter == null) {
-            logger.error { "Output path is not defined. Please, provide --outputPath option with a value." }
-            return
-        }
-
-        resultWriter.use {
+        getResultWriter()?.use { resultWriter ->
+            logger.info { "Start processing projects in ${projects.path}..." }
             projects.forEachLine { path ->
                 val buildSystem = detectBuildSystem(path)
                 val modules = buildSystem.getProjectModules(path)
@@ -37,12 +31,11 @@ class Runner : CliktCommand() {
                 val projectInfo = ProjectInfo(pathAsFile.name, buildSystem)
 
                 modules.map {
-                    TestExtractor(pathAsFile, ModuleInfo(it.key, projectInfo), resultWriter)
+                    ParserRunner(Lang.values(), pathAsFile, ModuleInfo(it.key, projectInfo), resultWriter)
                 }.forEach { it.run() }
             }
+            logger.info { "Finished processing projects." }
         }
-
-        logger.info { "Finished processing projects." }
     }
 
     private fun getResultWriter() = when (outputFormat) {
@@ -56,6 +49,7 @@ class Runner : CliktCommand() {
                 DBResultWriter(connection!!)
             }
         }
+
         else -> null
     }
 
