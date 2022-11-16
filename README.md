@@ -1,4 +1,5 @@
 # kut
+[![Build](https://github.com/onewhl/kut/actions/workflows/gradle-build.yml/badge.svg?branch=main)](https://github.com/onewhl/kut/actions/workflows/gradle-build.yml)
 
 Collects unit tests from Java repositories.
 
