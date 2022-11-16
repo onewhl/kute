@@ -7,12 +7,11 @@ import TestMethodInfo
 import mappers.DelegatingMethodMapper
 import mappers.KotlinMethodMeta
 import mu.KotlinLogging
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.psiUtil.containingClass
 import utils.KotlinEnvironmentManager
 import java.io.File
 
@@ -39,8 +38,8 @@ class KotlinTestParser(
         val testFiles: List<KtFile> = getTestFiles(parsedFilesInTestDir)
 
         return testFiles
-            .mapNotNull { it.containingClass() }
-            .flatMap { parseTestMethodsFromClass(it) }
+            .map { PsiTreeUtil.findChildrenOfType(it, KtClass::class.java).first() }
+            .flatMap { parseTestMethodsFromClass(it as KtClass) }
             .toList()
             .also { logger.info { "Finished processing files in module: $path. Found ${it.size} test methods." } }
     }
@@ -73,10 +72,10 @@ class KotlinTestParser(
         val sourceClass = findSourceClass(testClass)
         val testClassInfo = TestClassInfo(testClass.name!!, module.projectInfo, module, sourceClass)
 
-        return testClass.declarations.asSequence().filterIsInstance<KtNamedFunction>()
-            .filter { it.annotations.any { it.name == "Test" || it.name == "ParameterizedTest" } }
+        return testClass.declarations.filterIsInstance<KtNamedFunction>()
+            .filter { it.annotationEntries.any { it.text == "@Test" || it.text == "@ParameterizedTest" } }
             //TODO: make it configurable
-            .filter { it.annotations.none { it.name == "Disabled" || it.name == "Ignored" } }
+            .filter { it.annotationEntries.none { it.text == "@Disabled" || it.text == "@Ignored" } }
             .map { m ->
                 val sourceMethodInfo = sourceClass?.let {
                     DelegatingMethodMapper.findSourceMethod(KotlinMethodMeta(m), it, classNameToFile)
@@ -95,8 +94,9 @@ class KotlinTestParser(
             .also { logger.debug { "Parsed test methods in test class ${testClass.name}." } }
     }
 
-    private fun isParameterized(method: KtFunction): Boolean {
-        TODO()
+    private fun isParameterized(method: KtNamedFunction): Boolean {
+        //TODO implement it
+        return false
     }
 
     private fun findSourceClass(testClass: KtClass) =
@@ -127,9 +127,21 @@ class KotlinTestParser(
                 || it.contains("org.testng")
     }
 
-    private fun getComment(method: KtFunction) = method.docComment!!.text
+    private fun getComment(method: KtNamedFunction): String {
+        return if (method.docComment != null) {
+            method.docComment!!.text
+        } else ""
+    }
 
-    private fun getBody(m: KtFunction): String = m.bodyBlockExpression!!.text
+    private fun getBody(method: KtNamedFunction): String {
+        return if (method.docComment != null) {
+            method.bodyBlockExpression!!.text
+        } else ""
+    }
 
-    private fun getDisplayName(method: KtFunction): String = method.name!!
+    private fun getDisplayName(method: KtNamedFunction): String {
+        return if (method.name != null) {
+            method.name!!
+        } else ""
+    }
 }
