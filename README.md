@@ -16,9 +16,8 @@ Collects unit tests from Java repositories.
 
 ### Supported options
 
-| Name                 | Description                                                                         |
-|----------------------|-------------------------------------------------------------------------------------|
-| ```--projects```     | Path to the file with paths to the projects to analyze.                             |
-| ```--outputFormat``` | Format to store results in. Supported types: ```json```, ```database```, ```csv```. |
-| ```--outputPath```   | Path to put file with results to.                                                   |
-| ```--connection```   | Database URL. Should be provided in case when database output format is chosen.     |
+| Name                 | Description                                                                       |
+|----------------------|-----------------------------------------------------------------------------------|
+| ```--projects```     | Path to the file with paths to the projects to analyze.                           |
+| ```--outputFormat``` | Format to store results in. Supported types: ```json```, ```sqlite```, ```csv```. |
+| ```--outputPath```   | Path to put file with results to.                                                 |

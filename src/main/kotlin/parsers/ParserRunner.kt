@@ -19,7 +19,8 @@ class ParserRunner(
                 Lang.KOTLIN -> KotlinTestParser(path, module, classNameToFile)
             }
         }.forEach {
-            it.process(classFiles).forEach { method -> writer.writeTestMethod(method) }
+            val testMethods = it.process(classFiles)
+            writer.writeTestMethods(testMethods)
         }
     }
 

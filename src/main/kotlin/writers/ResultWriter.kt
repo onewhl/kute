@@ -7,4 +7,5 @@ import java.io.Closeable
  */
 interface ResultWriter : Closeable {
     fun writeTestMethod(method: TestMethodInfo)
+    fun writeTestMethods(methods: List<TestMethodInfo>) = methods.forEach { writeTestMethod(it) }
 }
