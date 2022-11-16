@@ -10,6 +10,6 @@ object KotlinMethodMapper : MethodMapper<File> {
         sourceClass: SourceClassInfo,
         input: File
     ): SourceMethodInfo? {
-        TODO("Not yet implemented")
+        TODO()
     }
 }

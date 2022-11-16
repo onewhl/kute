@@ -30,18 +30,13 @@ object JavaMethodMapper : MethodMapper<File> {
             val methodsWithMatchedNames = methods.filter { expectedSourceMethod.contains(it.nameAsString) }
 
             //use heuristic 2
-            methodsWithMatchedNames.forEach {
-                if (testMethod.hasMethodCall(JavaMethodMeta(it))) {
-                    return SourceMethodInfo(expectedSourceMethod, getBody(it), sourceClass)
+            methodsWithMatchedNames.forEach { sourceMethod ->
+                if (testMethod.hasMethodCall(JavaMethodMeta(sourceMethod))) {
+                    val body = sourceMethod.body.map { it.toString() }.orElse("")
+                    return SourceMethodInfo(expectedSourceMethod, body, sourceClass)
                 }
             }
         }
         return null
-    }
-
-    private fun getBody(m: MethodDeclaration): String = if (m.body.isPresent) {
-        m.body.get().toString()
-    } else {
-        ""
     }
 }
