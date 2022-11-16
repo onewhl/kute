@@ -32,7 +32,7 @@ class JsonResultWriter(path: Path) : ResultWriter {
     }
 
     override fun close() {
-        stream.write(']'.code)
+        stream.write("\r\n]".encodeToByteArray())
         stream.close()
     }
 }

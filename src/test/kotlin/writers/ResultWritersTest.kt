@@ -63,9 +63,12 @@ class ResultWritersTest {
                 provideTestMethods().forEach { writer.writeTestMethod(it) }
             }
             val expectedContent = """
-                [{"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1}},"sourceClass":null},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":1}}}},{"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":1},"sourceClass":null,"id":1},"sourceMethod":null}]
+                [
+                {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1}},"sourceClass":null},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":1}}}},
+                {"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":1},"sourceClass":null,"id":1},"sourceMethod":null}
+                ]
             """.trimIndent()
-            assertEquals(expectedContent, results.readText())
+            assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
         }
     }
 }
