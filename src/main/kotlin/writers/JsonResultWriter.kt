@@ -10,13 +10,14 @@ import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
-private const val separator = ','.code
+private val separator = ",\r\n".encodeToByteArray()
 
 /**
  * Writes results in JSON format if [OutputType.JSON] is chosen.
  */
 class JsonResultWriter(path: Path) : ResultWriter {
-    private val stream: OutputStream = BufferedOutputStream(Files.newOutputStream(path)).also { it.write('['.code) }
+    private val stream: OutputStream = BufferedOutputStream(Files.newOutputStream(path))
+        .also { it.write("[\r\n".encodeToByteArray()) }
     private var hasWrittenElement = false
 
     @OptIn(ExperimentalSerializationApi::class)
