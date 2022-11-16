@@ -11,7 +11,7 @@ jobs:
   build:
     strategy:
       matrix:
-        java_version: ['8']
+        java_version: ['11']
 
     name: Run tests with Java ${{matrix.java_version}}
     runs-on: ubuntu-latest
@@ -25,4 +25,4 @@ jobs:
           distribution: liberica
           cache: gradle
       - name: Build with Gradle
-        run: gradle build
+        run: ./gradlew build
