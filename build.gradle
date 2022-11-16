@@ -22,6 +22,8 @@ dependencies {
     implementation 'org.slf4j:slf4j-simple:2.0.0'
     implementation 'org.slf4j:slf4j-api:2.0.0'
 
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:6.3.0.202209071007-r'
+
     implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.24.4'
 
     implementation 'org.jetbrains.kotlin:kotlin-compiler-embeddable:1.7.21'
@@ -45,11 +47,11 @@ test {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = '1.8'
+    kotlinOptions.jvmTarget = '11'
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = '1.8'
+    kotlinOptions.jvmTarget = '11'
 }
 
 application {
