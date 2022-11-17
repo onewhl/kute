@@ -32,9 +32,13 @@ data class KotlinMethodMeta(private val delegate: KtFunction) : MethodMeta {
     override fun hasMethodCall(sourceMethod: MethodMeta): Boolean {
         val callExpressions = PsiTreeUtil.findChildrenOfType(delegate.bodyBlockExpression, KtCallExpression::class.java)
         callExpressions.forEach {
-            TODO()
+            if (it.calleeExpression != null &&
+                it.calleeExpression!!.text == sourceMethod.name &&
+                it.valueArguments.size == sourceMethod.parameters.size
+            ) {
+                return true
+            }
         }
-
         return false
     }
 }
