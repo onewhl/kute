@@ -21,7 +21,7 @@ import kotlin.reflect.KProperty0
 private const val BATCH_SIZE = 100
 
 /**
- * Writes results in database if [OutputType.DATABASE] is chosen.
+ * Writes results in database if [OutputType.SQLITE] is chosen.
  */
 class DBResultWriter(connectionString: String) : ResultWriter {
     private val batch = ArrayList<TestMethodInfo>(BATCH_SIZE)
@@ -29,25 +29,33 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
     init {
         Database.connect(connectionString)
-
-        SchemaUtils.create(
-            TestMethodsTable,
-            TestClassesTable,
-            SourceMethodsTable,
-            SourceClassesTable,
-            ProjectsTable,
-            ModulesTable
-        )
+        transaction {
+            SchemaUtils.create(
+                TestMethodsTable,
+                TestClassesTable,
+                SourceMethodsTable,
+                SourceClassesTable,
+                ProjectsTable,
+                ModulesTable
+            )
+        }
     }
 
     override fun writeTestMethod(method: TestMethodInfo) {
         batch.add(method)
         if (batch.size == BATCH_SIZE) {
-            writeBatch()
+            writeBatch(batch)
+            batch.clear()
         }
     }
 
-    private fun writeBatch() {
+    override fun writeTestMethods(methods: List<TestMethodInfo>) {
+        if (methods.isNotEmpty()) {
+            writeBatch(methods)
+        }
+    }
+
+    private fun writeBatch(batch: List<TestMethodInfo>) {
         transaction {
             batch.forEach { testMethodInfo ->
                 val classInfo = testMethodInfo.classInfo
@@ -58,6 +66,7 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val projectId = insertIfNew(projectInfo, lastRecordedValues::projectInfo) {
                     ProjectsTable.insert {
+                        it[id] = projectInfo.id
                         it[name] = projectInfo.name
                         it[buildSystem] = projectInfo.buildSystem
                     } get ProjectsTable.id
@@ -65,23 +74,26 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val moduleId = insertIfNew(moduleInfo, lastRecordedValues::moduleInfo) {
                     ModulesTable.insert {
+                        it[id] = moduleInfo.id
                         it[name] = moduleInfo.name
                         it[project] = projectId
                     } get ModulesTable.id
                 }
 
-                val sourceClassId = sourceClass?.let {
-                    insertIfNew(it, lastRecordedValues::sourceClassInfo) {
+                val sourceClassId = sourceClass?.let { source ->
+                    insertIfNew(source, lastRecordedValues::sourceClassInfo) {
                         SourceClassesTable.insert {
-                            it[name] = projectInfo.name
+                            it[id] = source.id
+                            it[name] = source.name
                             it[module] = moduleId
                         } get SourceClassesTable.id
                     }
                 }
 
-                val testClassId = insertIfNew(classInfo, lastRecordedValues::classInfo) {
+                val testClassId = insertIfNew(classInfo, lastRecordedValues::classInfo) { testClassInfo ->
                     TestClassesTable.insert {
-                        it[name] = projectInfo.name
+                        it[id] = testClassInfo.id
+                        it[name] = testClassInfo.name
                         it[project] = projectId
                         it[module] = moduleId
                         sourceClassId?.let { id -> it[TestClassesTable.sourceClass] = id }
@@ -90,6 +102,7 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val sourceMethodId = sourceMethod?.let { sourceMethodInfo ->
                     SourceMethodsTable.insert {
+                        it[id] = sourceMethodInfo.id
                         it[name] = sourceMethodInfo.name
                         it[body] = sourceMethodInfo.body
                         sourceClassId?.let { id -> it[SourceMethodsTable.sourceClass] = id }
@@ -97,18 +110,17 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                 }
 
                 TestMethodsTable.insert {
+                    it[id] = testMethodInfo.id
                     it[name] = testMethodInfo.name
+                    it[body] = testMethodInfo.body
                     it[comment] = testMethodInfo.comment
                     it[displayName] = testMethodInfo.displayName
                     it[isParametrised] = testMethodInfo.isParametrised
-                    it[body] = testMethodInfo.body
                     it[testClass] = testClassId
                     sourceMethodId?.let { id -> it[TestMethodsTable.sourceMethod] = id }
                 }
             }
         }
-
-        batch.clear()
     }
 
     /**
@@ -129,7 +141,8 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
     override fun close() {
         if (batch.isNotEmpty()) {
-            writeBatch()
+            writeBatch(batch)
+            batch.clear()
         }
     }
 

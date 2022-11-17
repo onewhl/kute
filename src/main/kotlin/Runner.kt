@@ -22,11 +22,10 @@ class Runner : CliktCommand() {
     //TODO: add an argument with list of test frameworks to work with
     private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
         .required()
-    private val outputFormat by option(help = "Format to store results in. Supported formats: json, database").required()
+    private val outputFormat by option(help = "Format to store results in. Supported formats: csv, json, sqlite").required()
     private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
     private val repoStorage by option(help = "Path to cloned git repos directory").file(canBeFile = false)
         .default(File("repos"))
-    private val connection by option(help = "")
 
     override fun run() {
         getResultWriter()?.use { resultWriter ->
@@ -86,14 +85,7 @@ class Runner : CliktCommand() {
     private fun getResultWriter() = when (outputFormat) {
         OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
         OutputType.CSV.value -> CsvResultWriter(getOutputFile().toPath())
-        OutputType.DATABASE.value -> {
-            if (connection == null) {
-                logger.error { "Connection is not defined. Please, provide --connection option with a value." }
-                null
-            } else {
-                DBResultWriter(connection!!)
-            }
-        }
+        OutputType.SQLITE.value -> DBResultWriter("jdbc:sqlite:${getOutputFile().toPath()}")
         else -> null
     }
 
