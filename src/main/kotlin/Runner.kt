@@ -16,22 +16,22 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executor
 
 private val logger = KotlinLogging.logger {}
-class Runner : CliktCommand() {
-    private val logger = KotlinLogging.logger {}
 
-    //TODO: add an argument with list of test frameworks to work with
+class Runner : CliktCommand() {
     private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
         .required()
     private val outputFormat by option(help = "Format to store results in. Supported formats: csv, json, sqlite").required()
     private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
-    private val repoStorage by option(help = "Path to cloned git repos directory").file(canBeFile = false)
+    private val repoStorage by option(help = "Path to the directory to clone repositories to").file(canBeFile = false)
         .default(File("repos"))
 
     override fun run() {
         getResultWriter()?.use { resultWriter ->
             val ioExecutor = Executor { command -> command.run() }
             val computeExecutor = Executor { command -> command.run() }
+
             logger.info { "Start processing projects in ${projects.path}..." }
+
             projects.forEachLine { path ->
                 if (path.startsWith("http")) {
                     ioExecutor.execute {
@@ -46,10 +46,10 @@ class Runner : CliktCommand() {
                     )
                 }
             }
+
             logger.info { "Finished processing projects." }
         }
     }
-
 
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
         override fun call(): File {
@@ -58,13 +58,16 @@ class Runner : CliktCommand() {
                 logger.warn("$destination directory already exists and will be cleaned")
                 destination.deleteRecursively()
             }
+
             logger.info("Cloning Git repository $url to $destination")
+
             val git = Git.cloneRepository()
                 .setURI(url)
                 .setDirectory(destination)
                 .call()
             val directory = git.repository.workTree
             git.close()
+
             return directory
         }
     }
@@ -77,7 +80,7 @@ class Runner : CliktCommand() {
             val buildSystem = detectBuildSystem(path)
             val projectInfo = ProjectInfo(path.name, buildSystem)
             buildSystem.getProjectModules(path).forEach { (moduleName, modulePath) ->
-                ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo), writer)
+                ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo), writer).run()
             }
         }
     }
@@ -89,13 +92,10 @@ class Runner : CliktCommand() {
         else -> null
     }
 
-    private fun getOutputFile(): File {
-        val outputFile = if (outputPath.isDirectory) {
-            File(outputPath, "results.${outputFormat}")
-        } else {
-            outputPath
-        }
-        return outputFile
+    private fun getOutputFile(): File = if (outputPath.isDirectory) {
+        File(outputPath, "results.${outputFormat}")
+    } else {
+        outputPath
     }
 }
 

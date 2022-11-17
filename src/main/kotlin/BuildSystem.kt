@@ -29,11 +29,14 @@ enum class BuildSystem {
     open fun getProjectModules(projectPath: File): Map<String, File> =
         mapOf(projectPath.name to projectPath)
             .also { logger.debug { "Found ${it.size} modules in project $projectPath." } }
-
-    open fun getTestFilesRoot(projectPath: File) = projectPath
 }
 
-private fun extractModuleNames(projectPath: File, settingsFile: File, regex: Regex, expectedGroup: Int): Map<String, File>? =
+private fun extractModuleNames(
+    projectPath: File,
+    settingsFile: File,
+    regex: Regex,
+    expectedGroup: Int
+): Map<String, File>? =
     regex.findAll(settingsFile.readText())
         .map { it.groups[expectedGroup]?.value ?: "" }
         .map { it to File(projectPath, it) }
@@ -45,6 +48,7 @@ fun detectBuildSystem(projectDirPath: File): BuildSystem {
     return when {
         File(projectDirPath, "build.gradle").isFile ||
                 File(projectDirPath, "build.gradle.kts").isFile -> BuildSystem.GRADLE
+
         File(projectDirPath, "pom.xml").isFile -> BuildSystem.MAVEN
         File(projectDirPath, "build.xml").isFile -> BuildSystem.ANT
         else -> BuildSystem.OTHER
