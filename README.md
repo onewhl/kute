@@ -15,11 +15,12 @@ formats: ```JSON```, ```CSV```
 
    ```git clone https://github.com/onewhl/kut```
 
+2. Next, run the application using gradle
 
-2. Build jar file ```./gradlew shadowJar```, it will appear in the directory ```kut/build/libs```
+   ```./gradlew run --args="--projects=/path/to/projects/file --output-format=json --output-path=/path/to/result/file"```
 
-
-3. To start processing the projects, run the command
+3. Alternatively, build jar file ```./gradlew shadowJar```, it will appear in the directory ```kut/build/libs```. 
+To start processing the projects, run the command
 
    ```java -jar ./build/libs/kut-1.0-all.jar --projects="path/to/projects/file" --output-format="json" --output-path="path/to/result/file"```
 
