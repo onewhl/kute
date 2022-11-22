@@ -21,15 +21,17 @@ formats: ```JSON```, ```CSV```
 
 3. To start processing the projects, run the command
 
-   ```java -jar ./build/libs/kut-1.0-all.jar --projects="path/to/projects/file" --outputFormat="json" --outputPath="path/to/result/file"```
+   ```java -jar ./build/libs/kut-1.0-all.jar --projects="path/to/projects/file" --output-format="json" --output-path="path/to/result/file"```
 
 ### Supported options
 
 ```kut``` is a command-line application that could be run with the following options:
 
-| Name                 | Description                                                                       | 
-|----------------------|-----------------------------------------------------------------------------------|
-| ```--projects```     | Path to the file with links to projects on GitHub.                                |
-| ```--outputFormat``` | Format to store results in. Supported types: ```json```, ```csv```, ```sqlite```. |
-| ```--outputPath```   | Path to put file with results to.                                                 |
-| ```--repoStorage```  | Path to the directory to clone repositories to.                                   |
+| Name                  | Description                                                                         | 
+|-----------------------|-------------------------------------------------------------------------------------|
+| ```--projects```      | Path to the file with links to projects on GitHub.                                  |
+| ```--output-format``` | Format to store results in. Supported types: ```json```, ```csv```, ```sqlite```.   |
+| ```--output-path```   | Path to put file with results to.                                                   |
+| ```--repo-torage```   | Path to the directory to clone repositories to.                                     |
+| ```--io-threads```    | Number of threads used for downloading Git repos. Use 0 for common pool. Default: 1 |
+| ```--cpu-threads```   | Number of threads used for processing projects. Use 0 for common pool. Default: 0   |
