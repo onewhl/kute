@@ -5,7 +5,7 @@ private val logger = KotlinLogging.logger {}
 
 enum class BuildSystem {
     GRADLE {
-        private val moduleNameRegex = "include\\s+['\"]([^']+)['\"]".toRegex()
+        private val moduleNameRegex = "include\\s+['\"]([^']+?)['\"]".toRegex()
 
         override fun getProjectModules(projectPath: File): Map<String, File> {
             val settings = File(projectPath, "settings.gradle").takeIf { it.isFile }
@@ -39,7 +39,7 @@ private fun extractModuleNames(
 ): Map<String, File>? =
     regex.findAll(settingsFile.readText())
         .map { it.groups[expectedGroup]?.value ?: "" }
-        .map { it to File(projectPath, it) }
+        .map { it to File(projectPath, it.replace(':', '/')) }
         .toMap()
         .takeIf { it.isNotEmpty() }
         .also { logger.debug { "Found ${it?.size} modules in project $projectPath." } }
