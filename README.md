@@ -32,6 +32,6 @@ formats: ```JSON```, ```CSV```
 | ```--projects```      | Path to the file with links to projects on GitHub.                                  |
 | ```--output-format``` | Format to store results in. Supported types: ```json```, ```csv```, ```sqlite```.   |
 | ```--output-path```   | Path to put file with results to.                                                   |
-| ```--repo-torage```   | Path to the directory to clone repositories to.                                     |
+| ```--repo-storage```   | Path to the directory to clone repositories to.                                     |
 | ```--io-threads```    | Number of threads used for downloading Git repos. Use 0 for common pool. Default: 1 |
 | ```--cpu-threads```   | Number of threads used for processing projects. Use 0 for common pool. Default: 0   |
