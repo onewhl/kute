@@ -1,9 +1,3 @@
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
-import com.github.ajalt.clikt.parameters.types.file
-import com.github.ajalt.clikt.parameters.types.int
 import mu.KotlinLogging
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.TextProgressMonitor
@@ -16,45 +10,51 @@ import writers.OutputType
 import java.io.File
 import java.io.Writer
 import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
 
 private val logger = KotlinLogging.logger {}
 
-class Runner : CliktCommand() {
-    private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
-        .required()
-    private val outputFormat by option(help = "Format to store results in. Supported formats: csv, json, sqlite").required()
-    private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
-    private val repoStorage by option(help = "Path to the directory to clone repositories to").file(canBeFile = false)
-        .default(File("repos"))
-    private val ioThreads by option(help = "Number of threads used for downloading Git repos. Use 0 for common pool").int()
-        .default(1)
-    private val cpuThreads by option(help = "Number of threads used for processing projects. Use 0 for common pool").int()
-        .default(0)
+class Runner(
+    private val projectsPath: File,
+    outputFormat: OutputType,
+    outputPath: File,
+    private val repoStorage: File,
+    ioThreads: Int,
+    cpuThreads: Int
+) {
+    private val outputFile = if (outputPath.isDirectory) {
+        File(outputPath, "results.${outputFormat.value}")
+    } else {
+        outputPath
+    }
 
-    override fun run() {
-        getResultWriter()?.use { resultWriter ->
-            val taskExecutor = TaskExecutor(ioThreads, cpuThreads)
-            logger.info { "Start processing projects in ${projects.path}..." }
+    private val resultWriter = when (outputFormat) {
+        OutputType.JSON -> JsonResultWriter(outputFile.toPath())
+        OutputType.CSV -> CsvResultWriter(outputFile.toPath())
+        OutputType.SQLITE -> DBResultWriter("jdbc:sqlite:$outputFile")
+    }
 
-            projects.forEachLine { path ->
-                if (path.startsWith("http")) {
-                    taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
-                        .thenCompose { repoPath ->
-                            taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
-                        }.thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
-                            writeTestMethodInfos(methodInfos, resultWriter)
-                        }}
-                } else if (path.isNotBlank()) {
-                    taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
-                        .thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
-                                writeTestMethodInfos(methodInfos, resultWriter)
-                        }}
-                }
+    private val taskExecutor = TaskExecutor(ioThreads, cpuThreads)
+
+    fun run() {
+        logger.info { "Start processing projects in ${projectsPath.path}..." }
+
+        projectsPath.forEachLine { path ->
+            if (path.startsWith("http")) {
+                taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
+                    .thenCompose { repoPath ->
+                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                    }.thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
+                        writeTestMethodInfos(methodInfos, resultWriter)
+                    }}
+            } else if (path.isNotBlank()) {
+                taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
+                    .thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
+                        writeTestMethodInfos(methodInfos, resultWriter)
+                    }}
             }
-            taskExecutor.join()
-            logger.info { "Finished processing projects." }
         }
+        taskExecutor.join()
+        logger.info { "Finished processing projects." }
     }
 
     private fun writeTestMethodInfos(testMethodInfos: List<TestMethodInfo>, resultWriter: ResultWriter) {
@@ -106,7 +106,6 @@ class Runner : CliktCommand() {
         override fun close() {}
 
         override fun flush() {}
-
     }
 
     private class ProjectProcessingTask(
@@ -124,19 +123,6 @@ class Runner : CliktCommand() {
             }
         }
     }
-
-    private fun getResultWriter() = when (outputFormat) {
-        OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
-        OutputType.CSV.value -> CsvResultWriter(getOutputFile().toPath())
-        OutputType.SQLITE.value -> DBResultWriter("jdbc:sqlite:${getOutputFile().toPath()}")
-        else -> null
-    }
-
-    private fun getOutputFile(): File = if (outputPath.isDirectory) {
-        File(outputPath, "results.${outputFormat}")
-    } else {
-        outputPath
-    }
 }
 
 private inline fun <T> namedThread(name: String, action: () -> T): T {
@@ -149,5 +135,3 @@ private inline fun <T> namedThread(name: String, action: () -> T): T {
         thread.name = oldName
     }
 }
-
-fun main(args: Array<String>) = Runner().main(args)
