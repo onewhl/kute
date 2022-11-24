@@ -23,7 +23,7 @@ class KotlinTestParser(
     override val language = Lang.KOTLIN
 
     override fun process(files: List<File>): List<TestMethodInfo> {
-        logger.info { "Start processing files in module: ." }
+        logger.info { "Start processing files in module: $path." }
 
         files.count { it.extension == language.extension }
             .let { logger.info { "Found: $it Kotlin files." } }
@@ -39,7 +39,7 @@ class KotlinTestParser(
             .map { PsiTreeUtil.findChildrenOfType(it, KtClass::class.java).first() }
             .flatMap { parseTestMethodsFromClass(it as KtClass) }
             .toList()
-            .also { logger.info { "Finished processing files in module: $path. Found ${it.size} test methods." } }
+            .also { logger.info { "Finished processing Kotlin files in module: $path. Found ${it.size} test methods." } }
     }
 
     private fun parseFiles(filePaths: List<File>): List<KtFile> =

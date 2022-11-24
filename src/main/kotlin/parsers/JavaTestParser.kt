@@ -37,7 +37,7 @@ class JavaTestParser(
         return testFiles
             .flatMap { parseTestMethodsFromClass(it) }
             .toList()
-            .also { logger.info { "Finished processing files in module: $path. Found ${it.size} test methods." } }
+            .also { logger.info { "Finished processing Java files in module: $path. Found ${it.size} test methods." } }
     }
 
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
@@ -80,7 +80,7 @@ class JavaTestParser(
         ?.let { SourceClassInfo(it, module) }
         .also {
             if (it != null && classNameToFile[it.name]!!.size > 1) {
-                logger.warn { "Multiple classes found with name $it.name: ${classNameToFile[it.name]}." }
+                logger.warn { "Multiple classes found with name ${it.name}: ${classNameToFile[it.name]}." }
             }
         }
 
