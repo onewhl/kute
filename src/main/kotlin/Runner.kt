@@ -53,6 +53,7 @@ class Runner(
                     }}
             }
         }
+        
         taskExecutor.join()
         logger.info { "Finished processing projects." }
     }
@@ -71,6 +72,7 @@ class Runner(
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
         override fun call(): File {
             val projectName = url.substringAfterLast('/').removeSuffix(".git")
+            
             return namedThread("${projectName}.downloader") {
                 val destination = File(targetDir, projectName)
                 if (destination.isDirectory) {
@@ -113,13 +115,13 @@ class Runner(
     ) : Callable<List<TestMethodInfo>> {
         override fun call(): List<TestMethodInfo> {
             val projectName = path.name
+            
             return namedThread("${projectName}.processor") {
                 val buildSystem = detectBuildSystem(path)
                 val projectInfo = ProjectInfo(projectName, buildSystem)
-                val res = buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
+                buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
                     ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
                 }
-                res
             }
         }
     }
