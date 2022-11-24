@@ -1,26 +1,25 @@
 package parsers
 
 import ModuleInfo
-import ResultWriter
+import TestMethodInfo
 import java.io.File
+import java.util.concurrent.Callable
 
 class ParserRunner(
     private val supportedLangs: Array<Lang>,
     private val path: File,
-    private val module: ModuleInfo,
-    private val writer: ResultWriter
-) : Runnable {
-    override fun run() {
+    private val module: ModuleInfo
+) : Callable<List<TestMethodInfo>> {
+    override fun call(): List<TestMethodInfo> {
         val classFiles = extractFiles(path, supportedLangs.map { it.extension }.toSet())
         val classNameToFile = classFiles.groupBy { it.name.substringBeforeLast('.') }
-        supportedLangs.map {
+        return supportedLangs.map {
             when (it) {
                 Lang.JAVA -> JavaTestParser(path, module, classNameToFile)
                 Lang.KOTLIN -> KotlinTestParser(path, module, classNameToFile)
             }
-        }.forEach {
-            val testMethods = it.process(classFiles)
-            writer.writeTestMethods(testMethods)
+        }.flatMap {
+            it.process(classFiles)
         }
     }
 

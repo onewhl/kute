@@ -1,10 +1,6 @@
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
-import com.github.ajalt.clikt.parameters.types.file
 import mu.KotlinLogging
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.TextProgressMonitor
 import parsers.Lang
 import parsers.ParserRunner
 import writers.CsvResultWriter
@@ -12,91 +8,132 @@ import writers.DBResultWriter
 import writers.JsonResultWriter
 import writers.OutputType
 import java.io.File
+import java.io.Writer
 import java.util.concurrent.Callable
-import java.util.concurrent.Executor
 
 private val logger = KotlinLogging.logger {}
 
-class Runner : CliktCommand() {
-    private val projects by option(help = "Path to file with projects").file(mustExist = true, canBeFile = true)
-        .required()
-    private val outputFormat by option(help = "Format to store results in. Supported formats: csv, json, sqlite").required()
-    private val outputPath by option(help = "Path to output directory").file(canBeFile = true).required()
-    private val repoStorage by option(help = "Path to the directory to clone repositories to").file(canBeFile = false)
-        .default(File("repos"))
+class Runner(
+    private val projectsPath: File,
+    outputFormat: OutputType,
+    outputPath: File,
+    private val repoStorage: File,
+    ioThreads: Int,
+    cpuThreads: Int
+) {
+    private val outputFile = if (outputPath.isDirectory) {
+        File(outputPath, "results.${outputFormat.value}")
+    } else {
+        outputPath
+    }
 
-    override fun run() {
-        getResultWriter()?.use { resultWriter ->
-            val ioExecutor = Executor { command -> command.run() }
-            val computeExecutor = Executor { command -> command.run() }
+    private val resultWriter = when (outputFormat) {
+        OutputType.JSON -> JsonResultWriter(outputFile.toPath())
+        OutputType.CSV -> CsvResultWriter(outputFile.toPath())
+        OutputType.SQLITE -> DBResultWriter("jdbc:sqlite:$outputFile")
+    }
 
-            logger.info { "Start processing projects in ${projects.path}..." }
+    private val taskExecutor = TaskExecutor(ioThreads, cpuThreads)
 
-            projects.forEachLine { path ->
-                if (path.startsWith("http")) {
-                    ioExecutor.execute {
-                        val repoPath = GitRepoDownloadingTask(path, repoStorage).call()
-                        computeExecutor.execute(
-                            ProjectProcessingTask(repoPath, resultWriter)
-                        )
-                    }
-                } else {
-                    computeExecutor.execute(
-                        ProjectProcessingTask(File(path), resultWriter)
-                    )
+    fun run() {
+        logger.info { "Start processing projects in ${projectsPath.path}..." }
+
+        projectsPath.forEachLine { path ->
+            if (path.startsWith("http")) {
+                taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
+                    .thenCompose { repoPath ->
+                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                    }.thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
+                        writeTestMethodInfos(methodInfos, resultWriter)
+                    }}
+            } else if (path.isNotBlank()) {
+                taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
+                    .thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
+                        writeTestMethodInfos(methodInfos, resultWriter)
+                    }}
+            }
+        }
+        
+        taskExecutor.join()
+        logger.info { "Finished processing projects." }
+    }
+
+    private fun writeTestMethodInfos(testMethodInfos: List<TestMethodInfo>, resultWriter: ResultWriter) {
+        if (testMethodInfos.isNotEmpty()) {
+            synchronized(resultWriter) {
+                val projectName = testMethodInfos[0].classInfo.projectInfo.name
+                namedThread("${projectName}.resultWriter") {
+                    resultWriter.writeTestMethods(testMethodInfos)
                 }
             }
-
-            logger.info { "Finished processing projects." }
         }
     }
 
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
         override fun call(): File {
-            val destination = File(targetDir, url.substringAfterLast('/').removeSuffix(".git"))
-            if (destination.isDirectory) {
-                logger.warn("$destination directory already exists and will be cleaned")
-                destination.deleteRecursively()
+            val projectName = url.substringAfterLast('/').removeSuffix(".git")
+            
+            return namedThread("${projectName}.downloader") {
+                val destination = File(targetDir, projectName)
+                if (destination.isDirectory) {
+                    logger.warn("$destination directory already exists and will be cleaned")
+                    destination.deleteRecursively()
+                }
+
+                logger.info("Cloning Git repository $url to $destination")
+
+                val git = Git.cloneRepository()
+                    .setURI(url)
+                    .setDirectory(destination)
+                    .setDepth(1)
+                    .setProgressMonitor(TextProgressMonitor(LogWriter()))
+                    .call()
+                val directory = git.repository.workTree
+                git.close()
+
+                directory
             }
-
-            logger.info("Cloning Git repository $url to $destination")
-
-            val git = Git.cloneRepository()
-                .setURI(url)
-                .setDirectory(destination)
-                .call()
-            val directory = git.repository.workTree
-            git.close()
-
-            return directory
         }
+    }
+
+    private class LogWriter : Writer() {
+        override fun write(str: String) {
+            logger.info(str.trim())
+        }
+
+        override fun write(buffer: CharArray, offset: Int, len: Int) {
+            write(String(buffer, offset, len))
+        }
+
+        override fun close() {}
+
+        override fun flush() {}
     }
 
     private class ProjectProcessingTask(
-        private val path: File,
-        private val writer: ResultWriter
-    ) : Runnable {
-        override fun run() {
-            val buildSystem = detectBuildSystem(path)
-            val projectInfo = ProjectInfo(path.name, buildSystem)
-            buildSystem.getProjectModules(path).forEach { (moduleName, modulePath) ->
-                ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo), writer).run()
+        private val path: File
+    ) : Callable<List<TestMethodInfo>> {
+        override fun call(): List<TestMethodInfo> {
+            val projectName = path.name
+            
+            return namedThread("${projectName}.processor") {
+                val buildSystem = detectBuildSystem(path)
+                val projectInfo = ProjectInfo(projectName, buildSystem)
+                buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
+                    ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
+                }
             }
         }
     }
-
-    private fun getResultWriter() = when (outputFormat) {
-        OutputType.JSON.value -> JsonResultWriter(getOutputFile().toPath())
-        OutputType.CSV.value -> CsvResultWriter(getOutputFile().toPath())
-        OutputType.SQLITE.value -> DBResultWriter("jdbc:sqlite:${getOutputFile().toPath()}")
-        else -> null
-    }
-
-    private fun getOutputFile(): File = if (outputPath.isDirectory) {
-        File(outputPath, "results.${outputFormat}")
-    } else {
-        outputPath
-    }
 }
 
-fun main(args: Array<String>) = Runner().main(args)
+private inline fun <T> namedThread(name: String, action: () -> T): T {
+    val thread = Thread.currentThread()
+    val oldName = thread.name
+    thread.name = name
+    try {
+        return action()
+    } finally {
+        thread.name = oldName
+    }
+}

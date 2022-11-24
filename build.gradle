@@ -55,13 +55,13 @@ compileTestKotlin {
 }
 
 application {
-    mainClassName = 'RunnerKt'
+    mainClassName = 'CliRunnerKt'
 }
 
 jar {
     manifest {
         attributes(
-                'Main-Class': 'RunnerKt'
+                'Main-Class': 'CliRunnerKt'
         )
     }
 }
