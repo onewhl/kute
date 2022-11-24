@@ -3,6 +3,7 @@ package dao
 import BuildSystem
 import org.jetbrains.exposed.sql.ReferenceOption.CASCADE
 import org.jetbrains.exposed.sql.Table
+import parsers.Lang
 
 object TestMethodsTable : Table() {
     val id = integer("id").autoIncrement()
@@ -32,6 +33,8 @@ object SourceMethodsTable : Table() {
 object TestClassesTable : Table() {
     val id = integer("id").autoIncrement()
     val name = varchar("name", 256)
+    val pkg = varchar("package", 256)
+    val language = enumerationByName("language", 6, Lang::class)
     val project = reference("project", ProjectsTable.id, onDelete = CASCADE, onUpdate = CASCADE)
     val module = reference("module", ModulesTable.id, onDelete = CASCADE, onUpdate = CASCADE)
     val sourceClass = reference("source_class", SourceClassesTable.id, onDelete = CASCADE, onUpdate = CASCADE)
@@ -43,6 +46,8 @@ object TestClassesTable : Table() {
 object SourceClassesTable : Table() {
     val id = integer("id").autoIncrement()
     val name = varchar("name", 256)
+    val pkg = varchar("package", 256)
+    val language = enumerationByName("language", 6, Lang::class)
     val module = reference("module", ModulesTable.id, onDelete = CASCADE, onUpdate = CASCADE)
 
     override val primaryKey = PrimaryKey(id)

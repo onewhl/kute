@@ -10,6 +10,7 @@ import TestMethodInfo
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import parsers.Lang
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
@@ -21,8 +22,9 @@ class ResultWritersTest {
     private fun provideTestMethods(): List<TestMethodInfo> {
         val projectInfo = ProjectInfo("My Project", BuildSystem.MAVEN, id = 1)
         val moduleInfo = ModuleInfo("main", projectInfo, id = 5)
-        val sourceClass = SourceClassInfo("Simple", moduleInfo, id = 10)
-        val testClassInfo = TestClassInfo("SimpleTest", projectInfo, moduleInfo, sourceClass, id = 30)
+        val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA, id = 10)
+        val testClassInfo =
+            TestClassInfo("SimpleTest", "com.test", projectInfo, moduleInfo, sourceClass, Lang.JAVA, id = 30)
         val sourceMethod = SourceMethodInfo("run", "", sourceClass, id = 50)
         val testMethodInfo = TestMethodInfo(
             name = "test",
@@ -52,9 +54,9 @@ class ResultWritersTest {
                 writer.writeTestMethods(provideTestMethods())
             }
             val expectedContent = """
-                name,body,comment,displayName,isParametrised,classInfo.name,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.projectInfo.id,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.moduleInfo.projectInfo.id,classInfo.moduleInfo.id,classInfo.sourceClass.name,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.moduleInfo.projectInfo.id,classInfo.sourceClass.moduleInfo.id,classInfo.sourceClass.id,classInfo.id,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.moduleInfo.projectInfo.id,sourceMethod.sourceClass.moduleInfo.id,sourceMethod.sourceClass.id,sourceMethod.id,id
-                test,assertTrue(true);,,Simple Test Method,false,SimpleTest,My Project,MAVEN,1,main,My Project,MAVEN,1,5,Simple,main,My Project,MAVEN,1,5,10,30,run,,Simple,main,My Project,MAVEN,1,5,10,50,101
-                testNew,"assertEquals(""true"", value);",,Simple Test Method 2,false,SimpleTest,My Project,MAVEN,1,main,My Project,MAVEN,1,5,Simple,main,My Project,MAVEN,1,5,10,30,,102
+                name,body,comment,displayName,isParametrised,classInfo.name,classInfo.package,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.projectInfo.id,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.moduleInfo.projectInfo.id,classInfo.moduleInfo.id,classInfo.sourceClass.name,classInfo.sourceClass.package,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.moduleInfo.projectInfo.id,classInfo.sourceClass.moduleInfo.id,classInfo.sourceClass.language,classInfo.sourceClass.id,classInfo.language,classInfo.id,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.package,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.moduleInfo.projectInfo.id,sourceMethod.sourceClass.moduleInfo.id,sourceMethod.sourceClass.language,sourceMethod.sourceClass.id,sourceMethod.id,id
+                test,assertTrue(true);,,Simple Test Method,false,SimpleTest,com.test,My Project,MAVEN,1,main,My Project,MAVEN,1,5,Simple,com.test,main,My Project,MAVEN,1,5,JAVA,10,JAVA,30,run,,Simple,com.test,main,My Project,MAVEN,1,5,JAVA,10,50,101
+                testNew,"assertEquals(""true"", value);",,Simple Test Method 2,false,SimpleTest,com.test,My Project,MAVEN,1,main,My Project,MAVEN,1,5,Simple,com.test,main,My Project,MAVEN,1,5,JAVA,10,JAVA,30,,102
             """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
         }
@@ -68,8 +70,8 @@ class ResultWritersTest {
             }
             val expectedContent = """
                 [
-                {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"sourceClass":{"name":"Simple","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"id":10},"id":30},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"id":10},"id":50},"id":101},
-                {"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":false,"classInfo":{"name":"SimpleTest","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"sourceClass":{"name":"Simple","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1}},"id":10},"id":30},"sourceMethod":null,"id":102}
+                {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"language":"JAVA","id":10},"language":"JAVA","id":30},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"language":"JAVA","id":10},"id":50},"id":101},
+                {"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1},"id":5},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","id":1}},"language":"JAVA","id":10},"language":"JAVA","id":30},"sourceMethod":null,"id":102}
                 ]
             """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
@@ -95,12 +97,20 @@ class ResultWritersTest {
             )
             checkDatabaseTableContent(
                 connection, "TestClasses", listOf(
-                    mapOf("id" to 30, "name" to "SimpleTest", "project" to 1, "module" to 5, "source_class" to 10)
+                    mapOf(
+                        "id" to 30,
+                        "name" to "SimpleTest",
+                        "project" to 1,
+                        "module" to 5,
+                        "source_class" to 10,
+                        "package" to "com.test",
+                        "language" to "JAVA"
+                    )
                 )
             )
             checkDatabaseTableContent(
                 connection, "SourceClasses", listOf(
-                    mapOf("id" to 10, "name" to "Simple", "module" to 5)
+                    mapOf("id" to 10, "name" to "Simple", "module" to 5, "package" to "com.test", "language" to "JAVA")
                 )
             )
             checkDatabaseTableContent(

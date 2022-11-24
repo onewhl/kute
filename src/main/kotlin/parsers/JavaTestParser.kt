@@ -42,7 +42,9 @@ class JavaTestParser(
 
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
         val sourceClass = findSourceClass(testClass)
-        val testClassInfo = TestClassInfo(testClass.primaryTypeName.orElse(""), module.projectInfo, module, sourceClass)
+        val pkg = testClass.packageDeclaration.orElse(null)?.nameAsString ?: ""
+        val testClassName = testClass.primaryTypeName.orElse("")
+        val testClassInfo = TestClassInfo(testClassName, pkg, module.projectInfo, module, sourceClass, language)
         val methodDeclarations = testClass.findAll(MethodDeclaration::class.java)
 
         return methodDeclarations
@@ -77,7 +79,7 @@ class JavaTestParser(
         .let { if (it.endsWith("ITCase", ignoreCase = true)) it.substring(0, it.length - "ITCase".length) else it }
         .let { if (it.endsWith("Case", ignoreCase = true)) it.substring(0, it.length - "Case".length) else it }
         .takeIf { classNameToFile.containsKey(it) }
-        ?.let { SourceClassInfo(it, module) }
+        ?.let { SourceClassInfo(it, "", module, language) }// TODO fix pkg declaration
         .also {
             if (it != null && classNameToFile[it.name]!!.size > 1) {
                 logger.warn { "Multiple classes found with name ${it.name}: ${classNameToFile[it.name]}." }

@@ -1,4 +1,6 @@
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import parsers.Lang
 import java.util.concurrent.atomic.AtomicInteger
 
 @Serializable
@@ -16,9 +18,11 @@ data class TestMethodInfo(
 @Serializable
 data class TestClassInfo(
     val name: String,
+    @SerialName("package") val pkg: String,
     val projectInfo: ProjectInfo,
     val moduleInfo: ModuleInfo,
     val sourceClass: SourceClassInfo?,
+    val language: Lang,
     val id: Int = IdGenerator.testClassCounter.getAndIncrement()
 )
 
@@ -33,7 +37,9 @@ data class SourceMethodInfo(
 @Serializable
 data class SourceClassInfo(
     val name: String,
+    @SerialName("package") val pkg: String,
     val moduleInfo: ModuleInfo,
+    val language: Lang,
     val id: Int = IdGenerator.sourceClassCounter.getAndIncrement()
 )
 

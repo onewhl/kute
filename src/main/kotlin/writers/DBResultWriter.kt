@@ -85,6 +85,8 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                         SourceClassesTable.insert {
                             it[id] = source.id
                             it[name] = source.name
+                            it[pkg] = source.pkg
+                            it[language] = source.language
                             it[module] = moduleId
                         } get SourceClassesTable.id
                     }
@@ -94,6 +96,8 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                     TestClassesTable.insert {
                         it[id] = testClassInfo.id
                         it[name] = testClassInfo.name
+                        it[pkg] = testClassInfo.pkg
+                        it[language] = testClassInfo.language
                         it[project] = projectId
                         it[module] = moduleId
                         sourceClassId?.let { id -> it[TestClassesTable.sourceClass] = id }

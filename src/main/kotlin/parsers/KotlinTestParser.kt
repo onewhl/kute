@@ -53,7 +53,8 @@ class KotlinTestParser(
 
     private fun parseTestMethodsFromClass(testClass: KtClass): List<TestMethodInfo> {
         val sourceClass = findSourceClass(testClass)
-        val testClassInfo = TestClassInfo(testClass.name!!, module.projectInfo, module, sourceClass)
+        val pkg = testClass.containingKtFile.packageFqName.asString()
+        val testClassInfo = TestClassInfo(testClass.name!!, pkg, module.projectInfo, module, sourceClass, language)
 
         return testClass.declarations
             .filterIsInstance<KtNamedFunction>()
@@ -90,7 +91,7 @@ class KotlinTestParser(
             .let { if (it.endsWith("ITCase", ignoreCase = true)) it.substring(0, it.length - "ITCase".length) else it }
             .let { if (it.endsWith("Case", ignoreCase = true)) it.substring(0, it.length - "Case".length) else it }
             .takeIf { classNameToFile.containsKey(it) }
-            ?.let { SourceClassInfo(it, module) }
+            ?.let { SourceClassInfo(it, "", module, language) } // TODO fix package declaration
             .also {
                 if (it != null && classNameToFile[it.name]!!.size > 1) {
                     logger.warn { "Multiple classes found with name ${it.name}: ${classNameToFile[it.name]}." }
