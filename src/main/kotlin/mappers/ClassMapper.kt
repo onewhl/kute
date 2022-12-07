@@ -1,0 +1,132 @@
+package mappers
+
+import ModuleInfo
+import SourceClassInfo
+import mu.KotlinLogging
+import parsers.detectLangByExtension
+import java.io.File
+import java.lang.StringBuilder
+import java.util.*
+import kotlin.Comparator
+import kotlin.collections.ArrayList
+
+class ClassMapper(
+    private val module: ModuleInfo,
+    private val classNameToSourcesMap: Map<String, List<File>>,
+    private val packageNameResolver: PackageNameResolver = RegexPackageNameResolver
+) {
+    fun findSourceClass(testClassMeta: ClassMeta): SourceClassInfo? {
+        return classNameTokenSubsetHeuristics(testClassMeta)
+    }
+
+    private fun classNameTokenSubsetHeuristics(testClassMeta: ClassMeta): SourceClassInfo? {
+        val testClassNameWithoutTestSuffix = removeSingleTestSuffix(testClassMeta.name)
+        val sourceClassCandidates = mutableListOf<SourceClassInfo>()
+        processClassNameCandidate(testClassNameWithoutTestSuffix, testClassMeta, sourceClassCandidates)
+        if (sourceClassCandidates.size == 1) return sourceClassCandidates[0]
+
+        val candidateNames = generateTokenCombinations(testClassNameWithoutTestSuffix) { 1 }
+        candidateNames.forEach { classNameCandidate ->
+            if (classNameCandidate != testClassNameWithoutTestSuffix) {
+                processClassNameCandidate(classNameCandidate, testClassMeta, sourceClassCandidates)
+            }
+        }
+        return sourceClassCandidates.firstOrNull { it.pkg == testClassMeta.packageName }
+            ?: sourceClassCandidates.firstOrNull()
+    }
+
+    private fun processClassNameCandidate(
+        classNameCandidate: String,
+        testClassMeta: ClassMeta,
+        sink: MutableList<SourceClassInfo>
+    ) {
+        classNameToSourcesMap[classNameCandidate]?.also { matchingFiles ->
+            if (matchingFiles.size == 1) {
+                val info =
+                    createSourceClassInfo(classNameCandidate, matchingFiles[0], testClassMeta)
+                if (testClassMeta.hasClassUsed(info)) {
+                    sink += info
+                }
+            } else {
+                val candidates = matchingFiles.map { createSourceClassInfo(classNameCandidate, it, testClassMeta) }
+                candidates.filterTo(sink) { testClassMeta.hasClassUsed(it) }
+            }
+        }
+    }
+
+    private fun createSourceClassInfo(className: String, file: File, testClassMeta: ClassMeta): SourceClassInfo {
+        val packageName = if (isSourceClassPackageNameSameAsTest(file, testClassMeta)) {
+            testClassMeta.packageName
+        } else {
+            packageNameResolver.extractPackageName(file)
+        }
+        return SourceClassInfo(
+            className, packageName, module, detectLangByExtension(file.extension), file = file
+        )
+    }
+
+    companion object {
+        private val TEST_SUFFIXES = arrayOf("Test", "Tests", "TestCase", "IT", "ITCase")
+
+        internal fun removeSingleTestSuffix(className: String): String {
+            TEST_SUFFIXES.forEach { suffix ->
+                className.removeSuffix(suffix).let {
+                    if (it !== className) return it
+                }
+            }
+            return className
+        }
+
+        private fun isSourceClassPackageNameSameAsTest(sourceClass: File, expectedPackagePath: String): Boolean =
+            sourceClass.parent.endsWith(expectedPackagePath)
+
+        private fun isSourceClassPackageNameSameAsTest(sourceClass: File, testClassMeta: ClassMeta): Boolean =
+            isSourceClassPackageNameSameAsTest(
+                sourceClass,
+                testClassMeta.packageName.replace('.', File.pathSeparatorChar)
+            )
+
+        internal fun splitByTokensCamelCase(className: String): List<Int> {
+            var beginIndex = 0
+            val result = ArrayList<Int>()
+            for (i in 1 until className.length) {
+                val ch = className[i]
+                if (ch.isUpperCase()) {
+                    result.add(i - beginIndex)
+                    beginIndex = i
+                }
+            }
+            result.add(className.length - beginIndex)
+            return result
+        }
+
+        internal fun generateTokenCombinations(
+            className: String,
+            minNumberOfTokensResolver: (List<Int>) -> Int = { 1 }
+        ): List<String> {
+            val tokens = splitByTokensCamelCase(className)
+            val minNumberOfTokens = minNumberOfTokensResolver(tokens)
+            require(minNumberOfTokens > 0) { "minNumberOfTokens must be higher than zero" }
+            val result = ArrayList<String>()
+            val maxLength = className.length
+            val sb = StringBuilder(maxLength)
+            var charsRemovedFromHead = 0
+            for (numItemsRemovedInHead in 0..tokens.size - minNumberOfTokens) {
+                sb.setLength(0)
+                // add without prefix
+                sb.append(className, charsRemovedFromHead, maxLength)
+                val maxLengthWithoutPrefix = sb.length
+                var charsRemovedFromTail = 0
+                for (i in tokens.size - 1 downTo numItemsRemovedInHead + minNumberOfTokens - 1) {
+                    // remove suffix
+                    sb.setLength(maxLengthWithoutPrefix - charsRemovedFromTail)
+                    result.add(sb.toString())
+                    charsRemovedFromTail += tokens[i]
+                }
+                charsRemovedFromHead += tokens[numItemsRemovedInHead]
+            }
+            Collections.sort(result, Comparator.comparingInt { -it.length })
+            return result
+        }
+    }
+}

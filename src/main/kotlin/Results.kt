@@ -1,6 +1,9 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import parsers.Lang
+import java.io.File
+import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicInteger
 
 @Serializable
@@ -40,7 +43,8 @@ data class SourceClassInfo(
     @SerialName("package") val pkg: String,
     val moduleInfo: ModuleInfo,
     val language: Lang,
-    val id: Int = IdGenerator.sourceClassCounter.getAndIncrement()
+    @Transient val file: File = throw IllegalStateException("file must be provided"),
+    val id: Int = IdGenerator.sourceClassCounter.getAndIncrement(),
 )
 
 @Serializable
