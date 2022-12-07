@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import parsers.Lang
+import java.io.File
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
@@ -22,7 +23,7 @@ class ResultWritersTest {
     private fun provideTestMethods(): List<TestMethodInfo> {
         val projectInfo = ProjectInfo("My Project", BuildSystem.MAVEN, id = 1)
         val moduleInfo = ModuleInfo("main", projectInfo, id = 5)
-        val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA, id = 10)
+        val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA, File("Simple.java"), id = 10)
         val testClassInfo =
             TestClassInfo("SimpleTest", "com.test", projectInfo, moduleInfo, sourceClass, Lang.JAVA, id = 30)
         val sourceMethod = SourceMethodInfo("run", "", sourceClass, id = 50)

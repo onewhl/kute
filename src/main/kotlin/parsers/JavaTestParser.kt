@@ -1,13 +1,14 @@
 package parsers
 
 import ModuleInfo
-import SourceClassInfo
 import TestClassInfo
 import TestMethodInfo
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.MethodDeclaration
+import mappers.ClassMapper
 import mappers.JavaMethodMeta
 import mappers.DelegatingMethodMapper
+import mappers.JavaClassMeta
 import mu.KotlinLogging
 import java.io.File
 
@@ -19,9 +20,10 @@ private val logger = KotlinLogging.logger {}
 class JavaTestParser(
     private val path: File,
     private val module: ModuleInfo,
-    private val classNameToFile: Map<String, List<File>>
+    classNameToFile: Map<String, List<File>>
 ) : Parser {
     override val language = Lang.JAVA
+    private val classMapper = ClassMapper(module, classNameToFile)
     override fun process(files: List<File>): List<TestMethodInfo> {
         logger.info { "Start processing files in module: $path." }
         files.count { it.extension == language.extension }
@@ -41,10 +43,9 @@ class JavaTestParser(
     }
 
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
-        val sourceClass = findSourceClass(testClass)
-        val pkg = testClass.packageDeclaration.orElse(null)?.nameAsString ?: ""
-        val testClassName = testClass.primaryTypeName.orElse("")
-        val testClassInfo = TestClassInfo(testClassName, pkg, module.projectInfo, module, sourceClass, language)
+        val javaClassMeta = JavaClassMeta(testClass)
+        val sourceClass = classMapper.findSourceClass(javaClassMeta)
+        val testClassInfo = TestClassInfo(javaClassMeta.name, javaClassMeta.packageName, module.projectInfo, module, sourceClass, language)
         val methodDeclarations = testClass.findAll(MethodDeclaration::class.java)
 
         return methodDeclarations
@@ -54,7 +55,7 @@ class JavaTestParser(
             .map { m ->
                 val sourceMethodInfo =
                     sourceClass?.let {
-                        DelegatingMethodMapper.findSourceMethod(JavaMethodMeta(m), it, classNameToFile)
+                        DelegatingMethodMapper.findSourceMethod(JavaMethodMeta(m), it, sourceClass.file)
                     }
 
                 TestMethodInfo(
@@ -72,19 +73,6 @@ class JavaTestParser(
 
     private fun isParameterized(method: MethodDeclaration): Boolean =
         method.annotations.any { it.nameAsString == "ParametrisedTest" }
-
-    private fun findSourceClass(testClass: CompilationUnit) = testClass.primaryTypeName.orElse(null)
-        .let { if (it.startsWith("Test", ignoreCase = true)) it.substring("Test".length) else it }
-        .let { if (it.endsWith("Test", ignoreCase = true)) it.substring(0, it.length - "Test".length) else it }
-        .let { if (it.endsWith("ITCase", ignoreCase = true)) it.substring(0, it.length - "ITCase".length) else it }
-        .let { if (it.endsWith("Case", ignoreCase = true)) it.substring(0, it.length - "Case".length) else it }
-        .takeIf { classNameToFile.containsKey(it) }
-        ?.let { SourceClassInfo(it, "", module, language) }// TODO fix pkg declaration
-        .also {
-            if (it != null && classNameToFile[it.name]!!.size > 1) {
-                logger.warn { "Multiple classes found with name ${it.name}: ${classNameToFile[it.name]}." }
-            }
-        }
 
     private fun getTestFiles(projectFiles: List<CompilationUnit>): List<CompilationUnit> =
         projectFiles

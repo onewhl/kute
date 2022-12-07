@@ -1,10 +1,11 @@
 package parsers
 
 import ModuleInfo
-import SourceClassInfo
 import TestClassInfo
 import TestMethodInfo
+import mappers.ClassMapper
 import mappers.DelegatingMethodMapper
+import mappers.KotlinClassMeta
 import mappers.KotlinMethodMeta
 import mu.KotlinLogging
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
@@ -18,9 +19,10 @@ private val logger = KotlinLogging.logger {}
 class KotlinTestParser(
     private val path: File,
     private val module: ModuleInfo,
-    private val classNameToFile: Map<String, List<File>>
+    classNameToFile: Map<String, List<File>>
 ) : Parser {
     override val language = Lang.KOTLIN
+    private val classMapper = ClassMapper(module, classNameToFile)
 
     override fun process(files: List<File>): List<TestMethodInfo> {
         logger.info { "Start processing files in module: $path." }
@@ -52,9 +54,16 @@ class KotlinTestParser(
         } ?: emptyList()
 
     private fun parseTestMethodsFromClass(testClass: KtClass): List<TestMethodInfo> {
-        val sourceClass = findSourceClass(testClass)
-        val pkg = testClass.containingKtFile.packageFqName.asString()
-        val testClassInfo = TestClassInfo(testClass.name!!, pkg, module.projectInfo, module, sourceClass, language)
+        val classMeta = KotlinClassMeta(testClass)
+        val sourceClass = classMapper.findSourceClass(classMeta)
+        val testClassInfo = TestClassInfo(
+            classMeta.name,
+            classMeta.packageName,
+            module.projectInfo,
+            module,
+            sourceClass,
+            language
+        )
 
         return testClass.declarations
             .filterIsInstance<KtNamedFunction>()
@@ -63,7 +72,7 @@ class KotlinTestParser(
             .filter { it.annotationEntries.none { it.text == "@Disabled" || it.text == "@Ignored" } }
             .map { m ->
                 val sourceMethodInfo = sourceClass?.let {
-                    DelegatingMethodMapper.findSourceMethod(KotlinMethodMeta(m), it, classNameToFile)
+                    DelegatingMethodMapper.findSourceMethod(KotlinMethodMeta(m), it, sourceClass.file)
                 }
 
                 TestMethodInfo(
@@ -83,20 +92,6 @@ class KotlinTestParser(
         //TODO implement it
         return false
     }
-
-    private fun findSourceClass(testClass: KtClass) =
-        testClass.name!!
-            .let { if (it.startsWith("Test", ignoreCase = true)) it.substring("Test".length) else it }
-            .let { if (it.endsWith("Test", ignoreCase = true)) it.substring(0, it.length - "Test".length) else it }
-            .let { if (it.endsWith("ITCase", ignoreCase = true)) it.substring(0, it.length - "ITCase".length) else it }
-            .let { if (it.endsWith("Case", ignoreCase = true)) it.substring(0, it.length - "Case".length) else it }
-            .takeIf { classNameToFile.containsKey(it) }
-            ?.let { SourceClassInfo(it, "", module, language) } // TODO fix package declaration
-            .also {
-                if (it != null && classNameToFile[it.name]!!.size > 1) {
-                    logger.warn { "Multiple classes found with name ${it.name}: ${classNameToFile[it.name]}." }
-                }
-            }
 
     private fun getTestFiles(projectFiles: List<KtFile>): List<KtFile> =
         projectFiles

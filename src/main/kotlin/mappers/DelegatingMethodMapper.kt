@@ -14,9 +14,7 @@ object DelegatingMethodMapper {
     fun findSourceMethod(
         testMethod: MethodMeta,
         sourceClass: SourceClassInfo,
-        classNameToFiles: Map<String, List<File>>
-    ): SourceMethodInfo? = classNameToFiles[sourceClass.name]?.firstNotNullOfOrNull {
-        mapperByFileType[it.extension]?.findSourceMethod(testMethod, sourceClass, it)
-    }
+        file: File
+    ): SourceMethodInfo? = mapperByFileType[file.extension]?.findSourceMethod(testMethod, sourceClass, file)
 }
 
