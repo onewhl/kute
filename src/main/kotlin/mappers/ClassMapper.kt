@@ -10,6 +10,19 @@ import java.util.*
 import kotlin.Comparator
 import kotlin.collections.ArrayList
 
+/**
+ * Implements heuristics to map test class to source class
+ * 1. a. Remove common test class suffix (Test, ITCase, IT, etc) and check if the files with such name exist
+ *    b. If a class exists and is used in test, return this class, otherwise see 2.
+ * 2. a. Split expected source class name into words (tokens) and generate permutations keeping original order.
+ *      For example, for SourceClassResolver the following will be generated:
+ *      Source, Class, Resolver, SourceClass, ClassResolver, SourceClassResolver
+ *    b. Sort the candidates by length in decreasing order
+ *    c. Add to the list If class file exists and the name is used in test
+ *    d. From the candidates used in test class, find first one from the same package as test class. If no such class
+ *      found, return first in the list.
+ * 3. If the list of possible candidates is empty, return null
+ */
 class ClassMapper(
     private val module: ModuleInfo,
     private val classNameToSourcesMap: Map<String, List<File>>,
