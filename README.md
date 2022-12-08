@@ -1,9 +1,9 @@
-# kut
+# kute
 
-[![Build](https://github.com/onewhl/kut/actions/workflows/gradle-build.yml/badge.svg?branch=main)](https://github.com/onewhl/kut/actions/workflows/gradle-build.yml)
+[![Build](https://github.com/onewhl/kute/actions/workflows/gradle-build.yml/badge.svg?branch=main)](https://github.com/onewhl/kute/actions/workflows/gradle-build.yml)
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
-```kut``` is a library that collects unit tests from Java and Kotlin repositories.
+```kute``` is a library that collects unit tests from Java and Kotlin repositories.
 
 It automatically downloads projects from GitHub, parses source code to identify unit tests, searches for the
 corresponding source methods, collects some metadata about the code, and stores the information in one of the following
@@ -14,20 +14,20 @@ formats: ```JSON```, ```CSV```
 
 1. First, clone the repository
 
-   ```git clone https://github.com/onewhl/kut```
+   ```git clone https://github.com/onewhl/kute```
 
 2. Next, run the application using gradle
 
    ```./gradlew run --args="--projects=/path/to/projects/file --output-format=json --output-path=/path/to/result/file"```
 
-3. Alternatively, build jar file ```./gradlew shadowJar```, it will appear in the directory ```kut/build/libs```. 
+3. Alternatively, build jar file ```./gradlew shadowJar```, it will appear in the directory ```kute/build/libs```. 
 To start processing the projects, run the command
 
-   ```java -jar ./build/libs/kut-1.0-all.jar --projects="path/to/projects/file" --output-format="json" --output-path="path/to/result/file"```
+   ```java -jar ./build/libs/kute-1.0-all.jar --projects="path/to/projects/file" --output-format="json" --output-path="path/to/result/file"```
 
 ### Supported options
 
-```kut``` is a command-line application that could be run with the following options:
+```kute``` is a command-line application that could be run with the following options:
 
 | Name                  | Description                                                                         | 
 |-----------------------|-------------------------------------------------------------------------------------|
