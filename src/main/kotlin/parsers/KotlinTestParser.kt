@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import parsers.TestFileFilter.Companion.findFilesInTestDir
 import java.io.File
 
 private val logger = KotlinLogging.logger {}
@@ -30,7 +31,7 @@ class KotlinTestParser(
         files.count { it.extension == language.extension }
             .let { logger.info { "Found: $it Kotlin files." } }
 
-        val classesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, path, files.stream())
+        val classesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, files)
             .also { logger.info { "Found: ${it.size} Kotlin test classes." } }
 
         val parsedFilesInTestDir: List<KtFile> = parseFiles(classesInTestDir)
