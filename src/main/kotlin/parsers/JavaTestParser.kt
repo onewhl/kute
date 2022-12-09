@@ -10,6 +10,7 @@ import mappers.JavaMethodMeta
 import mappers.DelegatingMethodMapper
 import mappers.JavaClassMeta
 import mu.KotlinLogging
+import parsers.TestFileFilter.Companion.findFilesInTestDir
 import java.io.File
 
 private val logger = KotlinLogging.logger {}
@@ -24,12 +25,13 @@ class JavaTestParser(
 ) : Parser {
     override val language = Lang.JAVA
     private val classMapper = ClassMapper(module, classNameToFile)
+
     override fun process(files: List<File>): List<TestMethodInfo> {
         logger.info { "Start processing files in module: $path." }
         files.count { it.extension == language.extension }
             .let { logger.info { "Found: $it Java classes." } }
 
-        val filesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, path, files.stream())
+        val filesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, files)
             .also { logger.info { "Found: ${it.size} Java test classes." } }
 
         val parsedFilesInTestDir: List<CompilationUnit> = parseFiles(filesInTestDir)
