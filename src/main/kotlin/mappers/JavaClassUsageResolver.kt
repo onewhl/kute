@@ -13,7 +13,12 @@ object JavaClassUsageResolver : ClassUsageResolver<CompilationUnit> {
         val differentPackages = testPackage != sourceClass.pkg
         var expectPackageNameOnUsage = differentPackages
         if (differentPackages) {
-            val fqcn = if (sourceClass.pkg != "") "${sourceClass.pkg}.${sourceClass.name}" else sourceClass.name
+            val fqcn = if (sourceClass.pkg != "") {
+                "${sourceClass.pkg}.${sourceClass.name}"
+            } else {
+                sourceClass.name
+            }
+
             testClass.imports.forEach { import ->
                 val foundMatch: Boolean = if (import.isStatic) {
                     if (import.isAsterisk) {
@@ -33,21 +38,24 @@ object JavaClassUsageResolver : ClassUsageResolver<CompilationUnit> {
                     }
                     false
                 }
+
                 if (foundMatch) return true
             }
         }
+
         return testClass.stream()
-            .filter { it.hasClassUsed(sourceClass, expectPackageNameOnUsage) }
+            .filter { it.hasClassUsage(sourceClass, expectPackageNameOnUsage) }
             .findAny()
             .isPresent
     }
 
-    private fun Node.hasClassUsed(sourceClass: SourceClassInfo, requirePackage: Boolean): Boolean {
+    private fun Node.hasClassUsage(sourceClass: SourceClassInfo, requirePackage: Boolean): Boolean {
         return when (this) {
             is ObjectCreationExpr -> {
                 this.type.nameAsString == sourceClass.name &&
                         (!requirePackage || sourceClass.pkg == this.type.scope.orElse(null)?.nameAsString)
             }
+
             is MethodCallExpr -> {
                 val fieldAccessExpr = this.scope.orElse(null) as? FieldAccessExpr
                 fieldAccessExpr?.let {
@@ -55,6 +63,7 @@ object JavaClassUsageResolver : ClassUsageResolver<CompilationUnit> {
                             (!requirePackage || sourceClass.pkg == it.scope?.toString())
                 } ?: false
             }
+
             else -> false
         }
     }

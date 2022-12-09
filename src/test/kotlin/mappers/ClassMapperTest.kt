@@ -75,7 +75,7 @@ class TestClassMeta(
     override val language: Lang,
     private val classUsageResolver: (SourceClassInfo) -> Boolean
 ) : ClassMeta {
-    override fun hasClassUsed(sourceClass: SourceClassInfo): Boolean = classUsageResolver(sourceClass)
+    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean = classUsageResolver(sourceClass)
 }
 
 class PathBasedPackageResolver(private val prefix: String): PackageNameResolver {

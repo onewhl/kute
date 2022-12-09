@@ -2,13 +2,9 @@ package mappers
 
 import ModuleInfo
 import SourceClassInfo
-import mu.KotlinLogging
 import parsers.detectLangByExtension
 import java.io.File
-import java.lang.StringBuilder
 import java.util.*
-import kotlin.Comparator
-import kotlin.collections.ArrayList
 
 /**
  * Implements heuristics to map test class to source class
@@ -44,6 +40,7 @@ class ClassMapper(
                 processClassNameCandidate(classNameCandidate, testClassMeta, sourceClassCandidates)
             }
         }
+
         return sourceClassCandidates.firstOrNull { it.pkg == testClassMeta.packageName }
             ?: sourceClassCandidates.firstOrNull()
     }
@@ -57,12 +54,12 @@ class ClassMapper(
             if (matchingFiles.size == 1) {
                 val info =
                     createSourceClassInfo(classNameCandidate, matchingFiles[0], testClassMeta)
-                if (testClassMeta.hasClassUsed(info)) {
+                if (testClassMeta.hasClassUsage(info)) {
                     sink += info
                 }
             } else {
                 val candidates = matchingFiles.map { createSourceClassInfo(classNameCandidate, it, testClassMeta) }
-                candidates.filterTo(sink) { testClassMeta.hasClassUsed(it) }
+                candidates.filterTo(sink) { testClassMeta.hasClassUsage(it) }
             }
         }
     }
