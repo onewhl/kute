@@ -45,7 +45,14 @@ class JavaTestParser(
     private fun parseTestMethodsFromClass(testClass: CompilationUnit): List<TestMethodInfo> {
         val javaClassMeta = JavaClassMeta(testClass)
         val sourceClass = classMapper.findSourceClass(javaClassMeta)
-        val testClassInfo = TestClassInfo(javaClassMeta.name, javaClassMeta.packageName, module.projectInfo, module, sourceClass, language)
+        val testClassInfo = TestClassInfo(
+            javaClassMeta.name,
+            javaClassMeta.packageName,
+            module.projectInfo,
+            module,
+            sourceClass,
+            language
+        )
         val methodDeclarations = testClass.findAll(MethodDeclaration::class.java)
 
         return methodDeclarations

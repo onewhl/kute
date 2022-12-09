@@ -9,7 +9,7 @@ interface ClassMeta {
     val name: String
     val packageName: String
     val language: Lang
-    fun hasClassUsed(sourceClass: SourceClassInfo): Boolean
+    fun hasClassUsage(sourceClass: SourceClassInfo): Boolean
 }
 
 class JavaClassMeta(private val testClass: CompilationUnit) : ClassMeta {
@@ -18,9 +18,8 @@ class JavaClassMeta(private val testClass: CompilationUnit) : ClassMeta {
     override val language: Lang
         get() = Lang.JAVA
 
-    override fun hasClassUsed(sourceClass: SourceClassInfo): Boolean =
+    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
         JavaClassUsageResolver.isSourceClassUsed(testClass, sourceClass)
-
 }
 
 class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
@@ -29,7 +28,6 @@ class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
     override val language: Lang
         get() = Lang.KOTLIN
 
-    override fun hasClassUsed(sourceClass: SourceClassInfo): Boolean =
+    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
         KotlinClassUsageResolver.isSourceClassUsed(testClass, sourceClass)
-
 }
