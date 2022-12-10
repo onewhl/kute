@@ -26,6 +26,9 @@ enum class BuildSystem {
     },
     ANT, OTHER;
 
+    val supportsTestDirFiltering
+        get() = this == MAVEN || this == GRADLE
+
     open fun getProjectModules(projectPath: File): Map<String, File> =
         mapOf(projectPath.name to projectPath)
             .also { logger.debug { "Found ${it.size} modules in project $projectPath." } }

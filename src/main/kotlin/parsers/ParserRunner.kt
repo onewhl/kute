@@ -25,6 +25,6 @@ class ParserRunner(
 
     private fun extractFiles(module: File, extensions: Set<String>): List<File> = module
         .walkTopDown()
-        .filter { extensions.contains(it.extension) }
+        .filter { extensions.contains(it.extension) && it.isFile }
         .toList()
 }
