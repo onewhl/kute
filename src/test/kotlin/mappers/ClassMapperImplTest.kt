@@ -14,9 +14,12 @@ class ClassMapperImplTest {
         "ImplIT,Impl",
         "ImplITCase,Impl",
         "ImplITTest,ImplIT",
+        "TestImpl,Impl",
+        "ITImpl,Impl",
+        "TestImplIT,TestImpl",
     )
-    fun removeSingleTestSuffix(input: String, expectedOutput: String) {
-        assertEquals(expectedOutput, ClassMapper.removeSingleTestSuffix(input))
+    fun removeSingleTestSuffixOrPrefix(input: String, expectedOutput: String) {
+        assertEquals(expectedOutput, ClassMapper.removeSingleTestSuffixOrPrefix(input))
     }
 
     @Test
