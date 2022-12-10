@@ -18,6 +18,7 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
     private val classMapper = ClassMapper(module, classNameToFile)
 
     abstract val metaFactory: MetaFactory<Cls, Func>
+
     override fun process(files: List<File>): List<TestMethodInfo> {
         logger.info { "Start processing files in module: $path." }
 
@@ -26,11 +27,11 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
 
         val classesInTestDir = TestFileFilter.findFilesInTestDir(language, module.projectInfo.buildSystem, files)
         val hint = if (module.projectInfo.buildSystem.supportsTestDirFiltering) " in test dir" else ""
-        logger.info { "Found: ${classesInTestDir.size} $language classes $hint." }
+        logger.info { "Found: ${classesInTestDir.size} $language classes$hint." }
 
         return parseTestFiles(classesInTestDir)
             .flatMap { file -> mapFileToClass(file)?.let { parseTestMethodsFromClass(it) } ?: emptyList() }
-            .also { logger.info { "Finished processing Kotlin files in module: $path. Found ${it.size} test methods." } }
+            .also { logger.info { "Finished processing $language files in module: $path. Found ${it.size} test methods." } }
     }
 
     private fun fastFilterTest(content: String) =
