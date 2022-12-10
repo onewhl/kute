@@ -29,7 +29,7 @@ class ClassMapper(
     }
 
     private fun classNameTokenSubsetHeuristics(testClassMeta: ClassMeta): SourceClassInfo? {
-        val testClassNameWithoutTestSuffix = removeSingleTestSuffix(testClassMeta.name)
+        val testClassNameWithoutTestSuffix = removeSingleTestSuffixOrPrefix(testClassMeta.name)
         val sourceClassCandidates = mutableListOf<SourceClassInfo>()
         processClassNameCandidate(testClassNameWithoutTestSuffix, testClassMeta, sourceClassCandidates)
         if (sourceClassCandidates.size == 1) return sourceClassCandidates[0]
@@ -77,10 +77,24 @@ class ClassMapper(
 
     companion object {
         private val TEST_SUFFIXES = arrayOf("Test", "Tests", "TestCase", "IT", "ITCase")
+        private val TEST_PREFIXES = arrayOf("Test", "IT")
 
-        internal fun removeSingleTestSuffix(className: String): String {
+        internal fun removeSingleTestSuffixOrPrefix(className: String) = removeSingleTestSuffix(className).let {
+            if (it === className) removeSingleTestPrefix(it) else it
+        }
+
+        private fun removeSingleTestSuffix(className: String): String {
             TEST_SUFFIXES.forEach { suffix ->
                 className.removeSuffix(suffix).let {
+                    if (it !== className) return it
+                }
+            }
+            return className
+        }
+
+        private fun removeSingleTestPrefix(className: String): String {
+            TEST_PREFIXES.forEach { prefix ->
+                className.removePrefix(prefix).let {
                     if (it !== className) return it
                 }
             }
