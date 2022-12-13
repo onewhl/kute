@@ -15,7 +15,7 @@ import java.io.File
 
 
 class TestMethodExtractionTests {
-    @CartesianTest
+    @CartesianTest(name = "Canonical {0} tests in {1} can be extracted")
     fun `canonical tests can be extracted`(
         @Enum framework: TestFramework,
         @Enum lang: Lang
@@ -36,7 +36,7 @@ class TestMethodExtractionTests {
         }
     }
 
-    @CartesianTest
+    @CartesianTest(name = "{0} tests in {1} defined using fqcn instead of import should be extracted")
     fun `tests defined using fqcn instead of import should be extracted`(
         @Enum framework: TestFramework,
         @Enum lang: Lang
@@ -57,8 +57,8 @@ class TestMethodExtractionTests {
         }
     }
 
-    @CartesianTest
-    fun `DisplayName is correctly extracted from tests`(
+    @CartesianTest(name = "Display name for {0} tests in {1} should be extracted")
+    fun `displayName is correctly extracted from tests`(
         @Enum(names = ["JUNIT3", "KOTLIN_TEST"], mode = Enum.Mode.EXCLUDE) framework: TestFramework,
         @Enum lang: Lang
     ) {
