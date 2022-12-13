@@ -115,12 +115,16 @@ class Runner(
     ) : Callable<List<TestMethodInfo>> {
         override fun call(): List<TestMethodInfo> {
             val projectName = path.name
-            
             return namedThread("${projectName}.processor") {
-                val buildSystem = detectBuildSystem(path)
-                val projectInfo = ProjectInfo(projectName, buildSystem)
-                buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
-                    ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
+                try {
+                    val buildSystem = detectBuildSystem(path)
+                    val projectInfo = ProjectInfo(projectName, buildSystem)
+                    buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
+                        ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
+                    }
+                } catch (e: Throwable) {
+                    logger.error(e) { e.message }
+                    throw e
                 }
             }
         }

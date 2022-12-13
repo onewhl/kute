@@ -21,8 +21,10 @@ object StaticKotlinFileParser {
         KotlinEnvironment()
     }
 
-    fun parse(file: File): KtFile = cachedEnvironments.get().psiFileFactory.let { factory ->
-        val virtualFile = LightVirtualFile(file.name, KotlinLanguage.INSTANCE, file.readText())
+    fun parse(file: File): KtFile = parse(file.name, file.readText())
+
+    fun parse(name: String, content: String): KtFile = cachedEnvironments.get().psiFileFactory.let { factory ->
+        val virtualFile = LightVirtualFile(name, KotlinLanguage.INSTANCE, content)
         virtualFile.charset = CharsetToolkit.UTF8_CHARSET
         return factory.trySetupPsiForFile(virtualFile, KotlinLanguage.INSTANCE, true, false) as KtFile
     }
