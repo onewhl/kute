@@ -13,14 +13,8 @@ class ParserRunner(
     override fun call(): List<TestMethodInfo> {
         val classFiles = extractFiles(path, supportedLangs.map { it.extension }.toSet())
         val classNameToFile = classFiles.groupBy { it.name.substringBeforeLast('.') }
-        return supportedLangs.map {
-            when (it) {
-                Lang.JAVA -> JavaTestParser(path, module, classNameToFile)
-                Lang.KOTLIN -> KotlinTestParser(path, module, classNameToFile)
-            }
-        }.flatMap {
-            it.process(classFiles)
-        }
+        return supportedLangs
+            .flatMap { createParser(it, path, module, classNameToFile).process(classFiles) }
     }
 
     private fun extractFiles(module: File, extensions: Set<String>): List<File> = module
