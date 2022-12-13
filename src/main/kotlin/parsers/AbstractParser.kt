@@ -34,6 +34,8 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
             .also { logger.info { "Finished processing $language files in module: $path. Found ${it.size} test methods." } }
     }
 
+    protected fun isTestMethodMarker(annotation: String?) = testMethodMarkers.contains(annotation)
+
     private fun fastFilterTest(content: String) =
         (content.contains("junit") || content.contains("testng") || content.contains("kotlin.test"))
                 && content.contains("Test")
@@ -84,4 +86,7 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
         source: SourceMethodInfo?
     ): TestMethodInfo
 
+    companion object {
+        private val testMethodMarkers = arrayOf("Test", "ParameterizedTest")
+    }
 }
