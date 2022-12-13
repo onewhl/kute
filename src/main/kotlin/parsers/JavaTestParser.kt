@@ -6,12 +6,9 @@ import TestClassInfo
 import TestMethodInfo
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.ast.expr.AnnotationExpr
-import com.github.javaparser.ast.expr.Expression
-import com.github.javaparser.ast.expr.NormalAnnotationExpr
-import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr
-import com.github.javaparser.ast.expr.StringLiteralExpr
-import mappers.*
+import com.github.javaparser.ast.comments.LineComment
+import com.github.javaparser.ast.expr.*
+import mappers.JavaMetaFactory
 import mu.KotlinLogging
 import java.io.File
 
@@ -65,7 +62,28 @@ class JavaTestParser(
         }
     }
 
-    private fun getComment(method: MethodDeclaration) = method.comment.orElse(null)?.content ?: ""
+    private fun LineComment.line(): Int = this.range.orElse(null)?.end?.line ?: -1
+
+    // JavaParser binds at most one line comment to block, so we need to check orphanComments to find other lines
+    private fun getComment(method: MethodDeclaration) = method.comment.orElse(null)?.let { comment ->
+        if (comment is LineComment) {
+            method.parentNode.orElse(null)?.orphanComments?.takeIf { it.isNotEmpty() }
+                ?.let {
+                    val comments = ArrayDeque<String>()
+                    comments.addLast(comment.toString())
+                    var prevLine = comment.line()
+                    for (orphanComment in it.reversed()) {
+                        if (orphanComment is LineComment && orphanComment.line() == prevLine - 1) {
+                            --prevLine
+                            comments.addFirst(orphanComment.toString())
+                        }
+                    }
+                    comments.joinToString(separator = "")
+                } ?: comment.toString()
+        } else {
+            comment.toString()
+        }
+    }?.trim() ?: ""
 
     private fun getBody(method: MethodDeclaration): String = method.body.orElse(null)?.toString() ?: ""
 
