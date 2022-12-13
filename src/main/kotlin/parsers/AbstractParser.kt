@@ -46,7 +46,6 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
                 file.readText()
                     .takeIf { fastFilterTest(it) }
                     ?.let { doParseSource(file, it) }
-                    ?.takeIf { src -> isTestFile(src) }
             }.filter { it != null }
             .collect(Collectors.toList<SrcFile>())
             .also { logger.debug { "Parsed ${it.size} $language test files in /test/ dir." } }

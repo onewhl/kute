@@ -21,33 +21,37 @@ class TestMethodExtractionTests {
     fun `canonical tests can be extracted`(
         @Enum framework: TestFramework,
         @Enum lang: Lang
-    ) {
-        runTest("Canonical", framework, lang) { classInfo ->
-            listOf(
-                TestMethodInfo(
-                    "testSimpleCase",
-                    formatBlock("assertEquals(1, 1)", lang),
-                    "",
-                    "",
-                    false,
-                    classInfo,
-                    null,
-                    1
-                )
+    ) = runTest("Canonical", framework, lang) { classInfo ->
+        listOf(
+            TestMethodInfo(
+                "testSimpleCase",
+                formatBlock("assertEquals(1, 1)", lang),
+                "",
+                "",
+                false,
+                classInfo,
+                null,
+                1
             )
-        }
+        )
     }
 
     @CartesianTest(name = "{0} tests in {1} defined using fqcn instead of import should be extracted")
     fun `tests defined using fqcn instead of import should be extracted`(
         @Enum framework: TestFramework,
         @Enum lang: Lang
-    ) {
+    ) = when(framework) {
+        TestFramework.JUNIT3 -> "assertEquals(1, 1)"
+        TestFramework.JUNIT4 -> "org.junit.Assert.assertEquals(1, 1)"
+        TestFramework.JUNIT5 -> "org.junit.jupiter.api.Assertions.assertEquals(1, 1)"
+        TestFramework.TESTNG -> "org.testng.Assert.assertEquals(1, 1)"
+        TestFramework.KOTLIN_TEST -> "kotlin.test.assertEquals(1, 1)"
+    }.let { body ->
         runTest("NoImport", framework, lang) { classInfo ->
             listOf(
                 TestMethodInfo(
                     "testWithoutImports",
-                    formatBlock("assertEquals(1, 1)", lang),
+                    formatBlock(body, lang),
                     "",
                     "",
                     false,
@@ -63,21 +67,19 @@ class TestMethodExtractionTests {
     fun `displayName is correctly extracted from tests`(
         @Enum(names = ["JUNIT3", "KOTLIN_TEST"], mode = Enum.Mode.EXCLUDE) framework: TestFramework,
         @Enum lang: Lang
-    ) {
-        runTest("DisplayName", framework, lang) { classInfo ->
-            listOf(
-                TestMethodInfo(
-                    "testWithDisplayName",
-                    formatBlock("assertEquals(1, 1)", lang),
-                    "",
-                    "Test with DisplayName",
-                    false,
-                    classInfo,
-                    null,
-                    1
-                )
+    ) = runTest("DisplayName", framework, lang) { classInfo ->
+        listOf(
+            TestMethodInfo(
+                "testWithDisplayName",
+                formatBlock("assertEquals(1, 1)", lang),
+                "",
+                "Test with DisplayName",
+                false,
+                classInfo,
+                null,
+                1
             )
-        }
+        )
     }
 
 
