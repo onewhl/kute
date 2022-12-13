@@ -82,6 +82,32 @@ class TestMethodExtractionTests {
         )
     }
 
+    @CartesianTest(name = "All types of comments supported in {0} tests")
+    fun `all types of comments supported`(@Enum lang: Lang) = mapOf(
+        "testSlashComment" to "// This is a first line of comments\n// This is a second line of comments",
+        "testMultiLineComment" to when(lang) {
+            Lang.JAVA ->   "/*\n     This is a multiline comment\n     */"
+            Lang.KOTLIN -> "/*\n    This is a multiline comment\n    */"
+        },
+        "testJavadocComment" to when(lang) {
+            Lang.JAVA ->   "/**\n *     This is Javadoc comment\n */"
+            Lang.KOTLIN -> "/**\n    This is Javadoc comment\n    */"
+        }).let { testNameToComment -> runTest("Comment", TestFramework.JUNIT4, lang) { classInfo ->
+        testNameToComment.map {
+            TestMethodInfo(
+                it.key,
+                formatBlock("assertEquals(1, 1)", lang),
+                it.value,
+                "",
+                false,
+                classInfo,
+                null,
+                1
+                )
+            }
+        }
+    }
+
 
     private fun formatBlock(code: String, lang: Lang) = if (lang == Lang.KOTLIN) code else {
         """

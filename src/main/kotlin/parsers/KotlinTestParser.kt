@@ -9,6 +9,7 @@ import mu.KotlinLogging
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.allChildren
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
 import java.io.File
 
@@ -60,7 +61,10 @@ class KotlinTestParser(
     private fun isParameterized(method: KtNamedFunction): Boolean =
         method.annotationEntries.any { it.shortName?.asString() == "ParameterizedTest" }
 
-    private fun getComment(method: KtNamedFunction): String = (method.firstChild as? PsiComment)?.text ?: ""
+    private fun getComment(method: KtNamedFunction): String = method.allChildren
+        .filter { it is PsiComment }
+        .joinToString(separator = "\n") { it.text }
+        .trim()
 
     private fun getBody(method: KtNamedFunction): String = method.bodyExpression?.text ?: ""
 
