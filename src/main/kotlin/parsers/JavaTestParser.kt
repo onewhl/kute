@@ -6,6 +6,11 @@ import TestClassInfo
 import TestMethodInfo
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.MethodDeclaration
+import com.github.javaparser.ast.expr.AnnotationExpr
+import com.github.javaparser.ast.expr.Expression
+import com.github.javaparser.ast.expr.NormalAnnotationExpr
+import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr
+import com.github.javaparser.ast.expr.StringLiteralExpr
 import mappers.*
 import mu.KotlinLogging
 import java.io.File
@@ -25,7 +30,7 @@ class JavaTestParser(
 
     override fun findTestMethods(testClass: CompilationUnit): List<MethodDeclaration> =
         testClass.findAll(MethodDeclaration::class.java).asSequence()
-            .filter { it.annotations.any { it.nameAsString == "Test" || it.nameAsString == "ParameterizedTest" } }
+            .filter { it.annotations.any { isTestMethodMarker(it.name.identifier) } }
             //TODO: make it configurable
             .filter { it.annotations.none { it.nameAsString == "Disabled" || it.nameAsString == "Ignored" } }
             .toList()
@@ -42,7 +47,7 @@ class JavaTestParser(
         )
 
     private fun isParameterized(method: MethodDeclaration): Boolean =
-        method.annotations.any { it.nameAsString == "ParameterizedTest" }
+        method.annotations.any { it.name.identifier == "ParameterizedTest" }
 
     override fun doParseSource(fileSource: File, content: String): CompilationUnit? =
         StaticJavaFileParser.parse(content, fileSource)
@@ -60,10 +65,19 @@ class JavaTestParser(
         }
     }
 
-    private fun getComment(method: MethodDeclaration) = method.javadocComment.orElse(null)?.content ?: ""
+    private fun getComment(method: MethodDeclaration) = method.comment.orElse(null)?.content ?: ""
 
     private fun getBody(method: MethodDeclaration): String = method.body.orElse(null)?.toString() ?: ""
 
     private fun getDisplayName(method: MethodDeclaration): String =
-        (method.annotations.find { a -> a.nameAsString == "DisplayName" }?.nameAsString) ?: ""
+        method.annotations.find { a -> a.name.identifier == "DisplayName" } ?.getValue() ?: ""
+
+    private fun Expression.toUnescapedString() = if (this is StringLiteralExpr) this.asString() else this.toString()
+
+    private fun AnnotationExpr.getValue(): String? = when(this) {
+        is SingleMemberAnnotationExpr -> this.memberValue.toUnescapedString()
+        is NormalAnnotationExpr -> this.pairs.find { it.name.asString() == "value" } ?.value?.toUnescapedString()
+        else -> null
+    }
+
 }
