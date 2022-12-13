@@ -45,7 +45,7 @@ class JavaTestParser(
         method.annotations.any { it.nameAsString == "ParameterizedTest" }
 
     override fun doParseSource(fileSource: File, content: String): CompilationUnit? =
-        StaticJavaFileParser.parse(content)
+        StaticJavaFileParser.parse(content, fileSource)
 
     override fun mapFileToClass(file: CompilationUnit): CompilationUnit = file
 
