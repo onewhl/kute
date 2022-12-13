@@ -13,5 +13,8 @@ object StaticJavaFileParser {
 
     fun parse(file: File): CompilationUnit? = cachedParsers.get().parse(file).result.orElse(null)
 
-    fun parse(code: String): CompilationUnit? = cachedParsers.get().parse(code).result.orElse(null)
+    fun parse(code: String, originalFile: File): CompilationUnit? =
+        cachedParsers.get().parse(code).result.orElse(null)?.also {
+            it.setStorage(originalFile.toPath())
+        }
 }
