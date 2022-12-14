@@ -1,11 +1,13 @@
 package parsers
 
 import ModuleInfo
-import SourceMethodInfo
 import TestClassInfo
 import TestFramework
 import TestMethodInfo
-import mappers.*
+import mappers.ClassMapper
+import mappers.DelegatingMethodMapper
+import mappers.MetaFactory
+import mappers.MethodMeta
 import mu.KLogger
 import java.io.File
 import java.util.stream.Collectors
@@ -83,26 +85,59 @@ abstract class AbstractParser<SrcFile, Cls, Func>(
             testFramework
         )
 
-        return findTestMethods(testClass)
-            .map { method ->
-                val sourceMethodInfo = sourceClass?.let {
-                    DelegatingMethodMapper.findSourceMethod(metaFactory.createMethodMeta(method), it, sourceClass.file)
-                }
-                createTestMethodInfo(method, testClassInfo, sourceMethodInfo)
+        return findMethods(testClass)
+            .mapNotNull { method ->
+                metaFactory.createMethodMeta(method)
+                    .takeIf { isTestMethod(it, testFramework) } ?.let { methodMeta ->
+                        val sourceMethodInfo = sourceClass?.let {
+                            DelegatingMethodMapper.findSourceMethod(methodMeta, it, sourceClass.file)
+                        }
+                        TestMethodInfo(
+                            methodMeta.name,
+                            methodMeta.body,
+                            methodMeta.comment,
+                            getDisplayName(methodMeta, testFramework),
+                            isParameterized(methodMeta, testFramework),
+                            isDisabled(methodMeta, testFramework),
+                            testClassInfo,
+                            sourceMethodInfo
+                        )
+                    }
             }
             .also { logger.debug { "Parsed ${it.size} $language test methods in test class ${classMeta.name}." } }
     }
 
-    protected abstract fun findTestMethods(testClass: Cls): List<Func>
+    private fun isTestMethod(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when (testFramework) {
+        TestFramework.JUNIT3 -> methodMeta.name.startsWith("test")
+        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Test") || methodMeta.hasAnnotation("ParameterizedTest")
+        else -> methodMeta.hasAnnotation("Test")
+    }
+
+    protected abstract fun findMethods(testClass: Cls): List<Func>
 
     protected abstract fun doParseSource(fileSource: File, content: String): SrcFile?
 
     protected abstract fun mapFileToClass(file: SrcFile): Cls?
-    protected abstract fun createTestMethodInfo(
-        method: Func,
-        classInfo: TestClassInfo,
-        source: SourceMethodInfo?
-    ): TestMethodInfo
+
+    private fun getDisplayName(methodMeta: MethodMeta, testFramework: TestFramework): String {
+        var displayName = methodMeta.getAnnotationValue("DisplayName")
+        if (displayName == null && testFramework == TestFramework.TESTNG) {
+            displayName = methodMeta.getAnnotationValue("Test", "description")
+        }
+        return displayName ?: ""
+    }
+
+    private fun isParameterized(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when(testFramework) {
+        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("ParameterizedTest")
+        else -> false
+    }
+
+    private fun isDisabled(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when(testFramework) {
+        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Disabled")
+        TestFramework.TESTNG -> methodMeta.getAnnotationValue("Test", "enabled") == "false"
+        TestFramework.JUNIT4, TestFramework.KOTLIN_TEST -> methodMeta.hasAnnotation("Ignore")
+        else -> false
+    }
 
     private data class Context<SrcFile>(val testFramework: TestFramework, val srcFile: SrcFile)
 
