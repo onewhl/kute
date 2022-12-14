@@ -55,6 +55,7 @@ class Runner(
         }
         
         taskExecutor.join()
+        resultWriter.close()
         logger.info { "Finished processing projects." }
     }
 
