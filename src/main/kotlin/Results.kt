@@ -14,8 +14,7 @@ data class TestMethodInfo(
     var displayName: String,
     var isParametrised: Boolean,
     val classInfo: TestClassInfo,
-    val sourceMethod: SourceMethodInfo?,
-    val id: Int = IdGenerator.testMethodCounter.getAndIncrement()
+    val sourceMethod: SourceMethodInfo?
 )
 
 @Serializable
@@ -25,16 +24,14 @@ data class TestClassInfo(
     val projectInfo: ProjectInfo,
     val moduleInfo: ModuleInfo,
     val sourceClass: SourceClassInfo?,
-    val language: Lang,
-    val id: Int = IdGenerator.testClassCounter.getAndIncrement()
+    val language: Lang
 )
 
 @Serializable
 data class SourceMethodInfo(
     val name: String,
     val body: String,
-    val sourceClass: SourceClassInfo,
-    val id: Int = IdGenerator.sourceMethodCounter.getAndIncrement()
+    val sourceClass: SourceClassInfo
 )
 
 @Serializable
@@ -43,29 +40,17 @@ data class SourceClassInfo(
     @SerialName("package") val pkg: String,
     val moduleInfo: ModuleInfo,
     val language: Lang,
-    @Transient val file: File = throw IllegalStateException("file must be provided"),
-    val id: Int = IdGenerator.sourceClassCounter.getAndIncrement(),
+    @Transient val file: File = throw IllegalStateException("file must be provided")
 )
 
 @Serializable
 data class ProjectInfo(
     val name: String,
-    val buildSystem: BuildSystem,
-    val id: Int = IdGenerator.projectCounter.getAndIncrement(),
+    val buildSystem: BuildSystem
 )
 
 @Serializable
 data class ModuleInfo(
     val name: String,
-    val projectInfo: ProjectInfo,
-    val id: Int = IdGenerator.moduleCounter.getAndIncrement()
+    val projectInfo: ProjectInfo
 )
-
-object IdGenerator {
-    val projectCounter: AtomicInteger = AtomicInteger(1)
-    val moduleCounter: AtomicInteger = AtomicInteger(1)
-    val testMethodCounter: AtomicInteger = AtomicInteger(1)
-    val sourceMethodCounter: AtomicInteger = AtomicInteger(1)
-    val testClassCounter: AtomicInteger = AtomicInteger(1)
-    val sourceClassCounter: AtomicInteger = AtomicInteger(1)
-}

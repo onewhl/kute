@@ -66,7 +66,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val projectId = insertIfNew(projectInfo, lastRecordedValues::projectInfo) {
                     ProjectsTable.insert {
-                        it[id] = projectInfo.id
                         it[name] = projectInfo.name
                         it[buildSystem] = projectInfo.buildSystem
                     } get ProjectsTable.id
@@ -74,7 +73,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val moduleId = insertIfNew(moduleInfo, lastRecordedValues::moduleInfo) {
                     ModulesTable.insert {
-                        it[id] = moduleInfo.id
                         it[name] = moduleInfo.name
                         it[project] = projectId
                     } get ModulesTable.id
@@ -83,7 +81,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                 val sourceClassId = sourceClass?.let { source ->
                     insertIfNew(source, lastRecordedValues::sourceClassInfo) {
                         SourceClassesTable.insert {
-                            it[id] = source.id
                             it[name] = source.name
                             it[pkg] = source.pkg
                             it[language] = source.language
@@ -94,7 +91,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val testClassId = insertIfNew(classInfo, lastRecordedValues::classInfo) { testClassInfo ->
                     TestClassesTable.insert {
-                        it[id] = testClassInfo.id
                         it[name] = testClassInfo.name
                         it[pkg] = testClassInfo.pkg
                         it[language] = testClassInfo.language
@@ -106,7 +102,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
                 val sourceMethodId = sourceMethod?.let { sourceMethodInfo ->
                     SourceMethodsTable.insert {
-                        it[id] = sourceMethodInfo.id
                         it[name] = sourceMethodInfo.name
                         it[body] = sourceMethodInfo.body
                         sourceClassId?.let { id -> it[SourceMethodsTable.sourceClass] = id }
@@ -114,7 +109,6 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                 }
 
                 TestMethodsTable.insert {
-                    it[id] = testMethodInfo.id
                     it[name] = testMethodInfo.name
                     it[body] = testMethodInfo.body
                     it[comment] = testMethodInfo.comment
