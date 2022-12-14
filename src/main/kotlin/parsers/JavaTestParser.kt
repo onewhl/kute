@@ -28,8 +28,6 @@ class JavaTestParser(
     override fun findTestMethods(testClass: CompilationUnit): List<MethodDeclaration> =
         testClass.findAll(MethodDeclaration::class.java).asSequence()
             .filter { it.annotations.any { isTestMethodMarker(it.name.identifier) } }
-            //TODO: make it configurable
-            .filter { it.annotations.none { it.nameAsString == "Disabled" || it.nameAsString == "Ignored" } }
             .toList()
 
     override fun createTestMethodInfo(method: MethodDeclaration, classInfo: TestClassInfo, source: SourceMethodInfo?) =
@@ -39,9 +37,13 @@ class JavaTestParser(
             getComment(method),
             getDisplayName(method),
             isParameterized(method),
+            isDisabled(method),
             classInfo,
             source
         )
+
+    private fun isDisabled(method: MethodDeclaration): Boolean =
+        method.annotations.any { it.name.identifier == "Disabled" || it.name.identifier == "Ignored" }
 
     private fun isParameterized(method: MethodDeclaration): Boolean =
         method.annotations.any { it.name.identifier == "ParameterizedTest" }
@@ -50,17 +52,6 @@ class JavaTestParser(
         StaticJavaFileParser.parse(content, fileSource)
 
     override fun mapFileToClass(file: CompilationUnit): CompilationUnit = file
-
-    /**
-     * Checks if a file is a test file or not by searching for JUnit or TestNG imports.
-     */
-    override fun isTestFile(file: CompilationUnit): Boolean {
-        return file.imports.any {
-            it.nameAsString.startsWith("org.junit") ||
-                    it.nameAsString.startsWith("junit.framework") ||
-                    it.nameAsString.startsWith("org.testng")
-        }
-    }
 
     private fun LineComment.line(): Int = this.range.orElse(null)?.end?.line ?: -1
 
@@ -91,6 +82,9 @@ class JavaTestParser(
         method.annotations.find { a -> a.name.identifier == "DisplayName" } ?.getValue() ?: ""
 
     private fun Expression.toUnescapedString() = if (this is StringLiteralExpr) this.asString() else this.toString()
+
+    private fun AnnotationExpr.getValue(name: String): String? =
+        (this as? NormalAnnotationExpr)?.pairs?.find { it.name.asString() == name }?.value?.toUnescapedString()
 
     private fun AnnotationExpr.getValue(): String? = when(this) {
         is SingleMemberAnnotationExpr -> this.memberValue.toUnescapedString()

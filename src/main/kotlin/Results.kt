@@ -4,15 +4,15 @@ import kotlinx.serialization.Transient
 import parsers.Lang
 import java.io.File
 import java.lang.IllegalStateException
-import java.util.concurrent.atomic.AtomicInteger
 
 @Serializable
 data class TestMethodInfo(
-    var name: String,
-    var body: String,
-    var comment: String,
-    var displayName: String,
-    var isParametrised: Boolean,
+    val name: String,
+    val body: String,
+    val comment: String,
+    val displayName: String,
+    val isParametrised: Boolean,
+    val isDisabled: Boolean,
     val classInfo: TestClassInfo,
     val sourceMethod: SourceMethodInfo?
 )
@@ -20,11 +20,12 @@ data class TestMethodInfo(
 @Serializable
 data class TestClassInfo(
     val name: String,
-    @SerialName("package") val pkg: String,
+    @SerialName("package") val packageName: String,
     val projectInfo: ProjectInfo,
     val moduleInfo: ModuleInfo,
     val sourceClass: SourceClassInfo?,
-    val language: Lang
+    val language: Lang,
+    val testFramework: TestFramework
 )
 
 @Serializable

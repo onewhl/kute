@@ -92,8 +92,9 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                 val testClassId = insertIfNew(classInfo, lastRecordedValues::classInfo) { testClassInfo ->
                     TestClassesTable.insert {
                         it[name] = testClassInfo.name
-                        it[pkg] = testClassInfo.pkg
+                        it[pkg] = testClassInfo.packageName
                         it[language] = testClassInfo.language
+                        it[testFramework] = testClassInfo.testFramework
                         it[project] = projectId
                         it[module] = moduleId
                         sourceClassId?.let { id -> it[TestClassesTable.sourceClass] = id }
@@ -114,6 +115,7 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                     it[comment] = testMethodInfo.comment
                     it[displayName] = testMethodInfo.displayName
                     it[isParametrised] = testMethodInfo.isParametrised
+                    it[isDisabled] = testMethodInfo.isDisabled
                     it[testClass] = testClassId
                     sourceMethodId?.let { id -> it[TestMethodsTable.sourceMethod] = id }
                 }

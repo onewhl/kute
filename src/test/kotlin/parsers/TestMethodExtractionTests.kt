@@ -24,13 +24,14 @@ class TestMethodExtractionTests {
     ) = runTest("Canonical", framework, lang) { classInfo ->
         listOf(
             TestMethodInfo(
-                "testSimpleCase",
-                formatBlock("assertEquals(1, 1)", lang),
-                "",
-                "",
-                false,
-                classInfo,
-                null
+                name = "testSimpleCase",
+                body = formatBlock("assertEquals(1, 1)", lang),
+                comment = "",
+                displayName = "",
+                isParametrised = false,
+                isDisabled = false,
+                classInfo = classInfo,
+                sourceMethod = null
             )
         )
     }
@@ -49,13 +50,14 @@ class TestMethodExtractionTests {
         runTest("NoImport", framework, lang) { classInfo ->
             listOf(
                 TestMethodInfo(
-                    "testWithoutImports",
-                    formatBlock(body, lang),
-                    "",
-                    "",
-                    false,
-                    classInfo,
-                    null
+                    name = "testWithoutImports",
+                    body = formatBlock(body, lang),
+                    comment = "",
+                    displayName = "",
+                    isParametrised = false,
+                    isDisabled = false,
+                    classInfo = classInfo,
+                    sourceMethod = null
                 )
             )
         }
@@ -68,13 +70,14 @@ class TestMethodExtractionTests {
     ) = runTest("DisplayName", framework, lang) { classInfo ->
         listOf(
             TestMethodInfo(
-                "testWithDisplayName",
-                formatBlock("assertEquals(1, 1)", lang),
-                "",
-                "Test with DisplayName",
-                false,
-                classInfo,
-                null
+                name = "testWithDisplayName",
+                body = formatBlock("assertEquals(1, 1)", lang),
+                comment = "",
+                displayName = "Test with DisplayName",
+                isParametrised = false,
+                isDisabled = false,
+                classInfo = classInfo,
+                sourceMethod = null
             )
         )
     }
@@ -92,14 +95,15 @@ class TestMethodExtractionTests {
         }).let { testNameToComment -> runTest("Comment", TestFramework.JUNIT4, lang) { classInfo ->
         testNameToComment.map {
             TestMethodInfo(
-                it.key,
-                formatBlock("assertEquals(1, 1)", lang),
-                it.value,
-                "",
-                false,
-                classInfo,
-                null
-                )
+                name = it.key,
+                body = formatBlock("assertEquals(1, 1)", lang),
+                comment = it.value,
+                displayName = "",
+                isParametrised = false,
+                isDisabled = false,
+                classInfo = classInfo,
+                sourceMethod = null
+            )
             }
         }
     }
@@ -127,10 +131,9 @@ class TestMethodExtractionTests {
         val moduleInfo = createModule(pathToModule)
         val parser = createParser(lang, pathToModule, moduleInfo, emptyMap())
         val testFile = File(pathToModule, "src/test/${lang.name.lowercase()}/project/${className}.${lang.extension}")
-        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, null, lang)
+        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, null, lang, framework)
 
         assertThat(parser.process(listOf(testFile))).usingRecursiveComparison()
-            .ignoringFields("id", "classInfo.id")
             .isEqualTo(expectedResultProvider(classInfo))
     }
 
