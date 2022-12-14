@@ -25,7 +25,7 @@ class ResultWritersTest {
         val moduleInfo = ModuleInfo("main", projectInfo)
         val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA, File("Simple.java"))
         val testClassInfo =
-            TestClassInfo("SimpleTest", "com.test", projectInfo, moduleInfo, sourceClass, Lang.JAVA)
+            TestClassInfo("SimpleTest", "com.test", projectInfo, moduleInfo, sourceClass, Lang.JAVA, TestFramework.JUNIT4)
         val sourceMethod = SourceMethodInfo("run", "", sourceClass)
         val testMethodInfo = TestMethodInfo(
             name = "test",
@@ -33,6 +33,7 @@ class ResultWritersTest {
             comment = "",
             displayName = "Simple Test Method",
             isParametrised = false,
+            isDisabled = false,
             classInfo = testClassInfo,
             sourceMethod = sourceMethod
         )
@@ -41,7 +42,9 @@ class ResultWritersTest {
                 name = "testNew",
                 displayName = "Simple Test Method 2",
                 body = "assertEquals(\"true\", value);",
-                sourceMethod = null
+                sourceMethod = null,
+                isParametrised = true,
+                isDisabled = true
             )
         return listOf(testMethodInfo, testMethodInfoNew)
     }
@@ -53,9 +56,9 @@ class ResultWritersTest {
                 writer.writeTestMethods(provideTestMethods())
             }
             val expectedContent = """
-                name,body,comment,displayName,isParametrised,classInfo.name,classInfo.package,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.name,classInfo.sourceClass.package,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.language,classInfo.language,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.package,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.language
-                test,assertTrue(true);,,Simple Test Method,false,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,Simple,com.test,main,My Project,MAVEN,JAVA,JAVA,run,,Simple,com.test,main,My Project,MAVEN,JAVA
-                testNew,"assertEquals(""true"", value);",,Simple Test Method 2,false,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,Simple,com.test,main,My Project,MAVEN,JAVA,JAVA,
+                name,body,comment,displayName,isParametrised,isDisabled,classInfo.name,classInfo.package,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.name,classInfo.sourceClass.package,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.language,classInfo.language,classInfo.testFramework,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.package,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.language
+                test,assertTrue(true);,,Simple Test Method,false,false,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,Simple,com.test,main,My Project,MAVEN,JAVA,JAVA,JUNIT4,run,,Simple,com.test,main,My Project,MAVEN,JAVA
+                testNew,"assertEquals(""true"", value);",,Simple Test Method 2,true,true,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,Simple,com.test,main,My Project,MAVEN,JAVA,JAVA,JUNIT4,
             """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
         }
@@ -68,10 +71,10 @@ class ResultWritersTest {
                 writer.writeTestMethods(provideTestMethods())
             }
             val expectedContent = """
-                [
-                {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"},"language":"JAVA"},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"}}},
-                {"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"},"language":"JAVA"},"sourceMethod":null}
-                ]
+               [
+               {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"isDisabled":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"},"language":"JAVA","testFramework":"JUNIT4"},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"}}},
+               {"name":"testNew","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":true,"isDisabled":true,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"},"language":"JAVA","testFramework":"JUNIT4"},"sourceMethod":null}
+               ]
             """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
         }
@@ -103,7 +106,8 @@ class ResultWritersTest {
                         "module" to 1,
                         "source_class" to 1,
                         "package" to "com.test",
-                        "language" to "JAVA"
+                        "language" to "JAVA",
+                        "test_framework" to "JUNIT4"
                     )
                 )
             )
@@ -126,6 +130,7 @@ class ResultWritersTest {
                         "comment" to "",
                         "display_name" to "Simple Test Method",
                         "is_parametrised" to 0,
+                        "is_disabled" to 0,
                         "test_class" to 1,
                         "source_method" to 1
                     ),
@@ -135,7 +140,8 @@ class ResultWritersTest {
                         "body" to "assertEquals(\"true\", value);",
                         "comment" to "",
                         "display_name" to "Simple Test Method 2",
-                        "is_parametrised" to 0,
+                        "is_parametrised" to 1,
+                        "is_disabled" to 1,
                         "test_class" to 1,
                         "source_method" to null
                     )
