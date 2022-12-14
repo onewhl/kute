@@ -10,7 +10,7 @@ import parsers.Lang
 import java.io.File
 
 class ClassMapperTest {
-    private val module = ModuleInfo("test", ProjectInfo("test", BuildSystem.OTHER, 1), 1)
+    private val module = ModuleInfo("test", ProjectInfo("test", BuildSystem.OTHER))
 
     @Test
     fun `test that single source with corresponding name and package is located`() {

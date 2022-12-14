@@ -30,8 +30,7 @@ class TestMethodExtractionTests {
                 "",
                 false,
                 classInfo,
-                null,
-                1
+                null
             )
         )
     }
@@ -56,8 +55,7 @@ class TestMethodExtractionTests {
                     "",
                     false,
                     classInfo,
-                    null,
-                    1
+                    null
                 )
             )
         }
@@ -76,8 +74,7 @@ class TestMethodExtractionTests {
                 "Test with DisplayName",
                 false,
                 classInfo,
-                null,
-                1
+                null
             )
         )
     }
@@ -101,8 +98,7 @@ class TestMethodExtractionTests {
                 "",
                 false,
                 classInfo,
-                null,
-                1
+                null
                 )
             }
         }
@@ -131,7 +127,7 @@ class TestMethodExtractionTests {
         val moduleInfo = createModule(pathToModule)
         val parser = createParser(lang, pathToModule, moduleInfo, emptyMap())
         val testFile = File(pathToModule, "src/test/${lang.name.lowercase()}/project/${className}.${lang.extension}")
-        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, null, lang, 1)
+        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, null, lang)
 
         assertThat(parser.process(listOf(testFile))).usingRecursiveComparison()
             .ignoringFields("id", "classInfo.id")
@@ -139,7 +135,7 @@ class TestMethodExtractionTests {
     }
 
     private fun createModule(path: File) =
-        ModuleInfo(path.nameWithoutExtension, ProjectInfo("test_project", BuildSystem.GRADLE, id = 1), id = 1)
+        ModuleInfo(path.nameWithoutExtension, ProjectInfo("test_project", BuildSystem.GRADLE))
 
     companion object {
         val frameworkToModule = TestFramework.values().associateWith {
