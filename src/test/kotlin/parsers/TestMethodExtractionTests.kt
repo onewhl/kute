@@ -9,13 +9,11 @@ import TestMethodInfo
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 import org.junit.jupiter.api.Assumptions
-import org.junit.jupiter.api.Disabled
 import org.junitpioneer.jupiter.cartesian.CartesianTest
 import org.junitpioneer.jupiter.cartesian.CartesianTest.Enum
 import java.io.File
 
 
-@Disabled("Should be disabled until all features implemented")
 class TestMethodExtractionTests {
     @CartesianTest(name = "Canonical {0} tests in {1} can be extracted")
     fun `canonical tests can be extracted`(
@@ -76,6 +74,25 @@ class TestMethodExtractionTests {
                 displayName = "Test with DisplayName",
                 isParametrised = false,
                 isDisabled = false,
+                classInfo = classInfo,
+                sourceMethod = null
+            )
+        )
+    }
+
+    @CartesianTest(name = "Disabled {0} tests in {1} should be extracted")
+    fun `disabled tests extracted`(
+        @Enum(names = ["JUNIT3"], mode = Enum.Mode.EXCLUDE) framework: TestFramework,
+        @Enum lang: Lang
+    ) = runTest("Disabled", framework, lang) { classInfo ->
+        listOf(
+            TestMethodInfo(
+                name = "testDisabled",
+                body = formatBlock("TODO(\"implement later\")", lang),
+                comment = "",
+                displayName = "",
+                isParametrised = false,
+                isDisabled = true,
                 classInfo = classInfo,
                 sourceMethod = null
             )
