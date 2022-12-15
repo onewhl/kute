@@ -2,6 +2,6 @@ package mappers
 
 import SourceClassInfo
 
-interface ClassUsageResolver<T> {
-    fun isSourceClassUsed(testClass: T, sourceClass: SourceClassInfo): Boolean
+interface ClassUsageResolver<File, Cls> {
+    fun isSourceClassUsed(testFile: File, testClass: Cls, sourceClass: SourceClassInfo): Boolean
 }

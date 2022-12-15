@@ -75,6 +75,7 @@ class TestClassMeta(
     override val language: Lang,
     private val classUsageResolver: (SourceClassInfo) -> Boolean
 ) : ClassMeta {
+    override val methods: Iterable<MethodMeta> = emptyList()
     override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean = classUsageResolver(sourceClass)
 }
 
