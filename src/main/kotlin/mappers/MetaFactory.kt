@@ -1,21 +1,33 @@
 package mappers
 
-import com.github.javaparser.ast.CompilationUnit
-import com.github.javaparser.ast.body.MethodDeclaration
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtClass
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import parsers.Lang
+import parsers.StaticJavaFileParser
+import parsers.StaticKotlinFileParser
+import java.io.File
 
-sealed interface MetaFactory<Cls, Func> {
-    fun createClassMeta(cls: Cls): ClassMeta
-    fun createMethodMeta(func: Func): MethodMeta
+sealed interface MetaFactory {
+    fun parse(file: File, content: String): List<ClassMeta>
 }
 
-object KotlinMetaFactory: MetaFactory<KtClass, KtNamedFunction> {
-    override fun createClassMeta(cls: KtClass): ClassMeta = KotlinClassMeta(cls)
-    override fun createMethodMeta(func: KtNamedFunction): MethodMeta = KotlinMethodMeta(func)
+private object KotlinMetaFactory: MetaFactory {
+    override fun parse(file: File, content: String): List<ClassMeta> {
+        val ktFile = StaticKotlinFileParser.parse(file.name, content)
+        return PsiTreeUtil.findChildrenOfType(ktFile, KtClass::class.java).map { KotlinClassMeta(it) }
+    }
 }
 
-object JavaMetaFactory: MetaFactory<CompilationUnit, MethodDeclaration> {
-    override fun createClassMeta(cls: CompilationUnit): ClassMeta = JavaClassMeta(cls)
-    override fun createMethodMeta(func: MethodDeclaration): MethodMeta = JavaMethodMeta(func)
+private object JavaMetaFactory: MetaFactory {
+    override fun parse(file: File, content: String) =
+        StaticJavaFileParser.parse(content, file)?.let { compilationUnit ->
+            compilationUnit.types.mapNotNull { classDecl ->
+                (classDecl as? ClassOrInterfaceDeclaration)?.let { JavaClassMeta(compilationUnit, it) } }
+        } ?: emptyList()
+}
+
+fun getMetaFactoryByLanguage(language: Lang): MetaFactory = when(language) {
+    Lang.JAVA -> JavaMetaFactory
+    Lang.KOTLIN -> KotlinMetaFactory
 }
