@@ -2,7 +2,7 @@ package project
 
 import org.testng.annotations.Test
 
-class DisabledKotlinTest {
+class DisabledOnMethodLevelKotlinTest {
     @Test(enabled = false)
     fun testDisabled(): Unit = TODO("implement later")
 }

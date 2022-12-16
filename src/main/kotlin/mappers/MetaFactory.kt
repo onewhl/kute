@@ -15,7 +15,8 @@ sealed interface MetaFactory {
 private object KotlinMetaFactory: MetaFactory {
     override fun parse(file: File, content: String): List<ClassMeta> {
         val ktFile = StaticKotlinFileParser.parse(file.name, content)
-        return PsiTreeUtil.findChildrenOfType(ktFile, KtClass::class.java).map { KotlinClassMeta(it) }
+        return PsiTreeUtil.findChildrenOfType(ktFile, KtClass::class.java)
+            .mapNotNull { cls -> cls.name?.let { KotlinClassMeta(cls) } }
     }
 }
 

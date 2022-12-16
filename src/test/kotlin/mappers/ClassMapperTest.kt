@@ -77,6 +77,8 @@ class TestClassMeta(
 ) : ClassMeta {
     override val methods: Iterable<MethodMeta> = emptyList()
     override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean = classUsageResolver(sourceClass)
+    override fun hasAnnotation(name: String): Boolean = false
+    override fun getAnnotationValue(name: String, key: String?) = null
 }
 
 class PathBasedPackageResolver(private val prefix: String): PackageNameResolver {

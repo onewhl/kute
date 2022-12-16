@@ -34,7 +34,7 @@ class JvmTestsParser(
         logger.info { "Found: ${classesInTestDir.size} ${language.displayName} classes$hint." }
 
         val progressLogger = ProgressLogger(classesInTestDir.size) { cnt, total ->
-            "Parsed $cnt/$total ${language.displayName} test files in /test/ dir."
+            "Parsed $cnt/$total ${language.displayName} test files$hint."
         }
         return classesInTestDir.parallelStream()
             .map { tryParse(it).also { progressLogger.visit() } }
@@ -58,9 +58,11 @@ class JvmTestsParser(
                 content.contains("testng") -> TestFramework.TESTNG
                 content.contains("kotlin.test") -> TestFramework.KOTLIN_TEST
                 else -> null
-            }?.let { framework -> metaFactory.parse(file, content)
-                .takeIf { it.isNotEmpty() }
-                ?.let { Context(framework, it) } }
+            }?.let { framework ->
+                metaFactory.parse(file, content)
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { Context(framework, it) }
+            }
         }
         return null
     }
@@ -76,10 +78,12 @@ class JvmTestsParser(
             language,
             testFramework
         )
+        val isClassParameterized = isClassParameterized(classMeta, testFramework)
+        val isClassDisabled = isClassDisabled(classMeta, testFramework)
 
         return classMeta.methods
             .mapNotNull { it ->
-                it.takeIf { isTestMethod(it, testFramework) } ?.let { methodMeta ->
+                it.takeIf { isTestMethod(it, classMeta, testFramework) }?.let { methodMeta ->
                     val sourceMethodInfo = sourceClass?.let {
                         DelegatingMethodMapper.findSourceMethod(methodMeta, it, sourceClass.file)
                     }
@@ -88,8 +92,8 @@ class JvmTestsParser(
                         methodMeta.body,
                         methodMeta.comment,
                         getDisplayName(methodMeta, testFramework),
-                        isParameterized(methodMeta, testFramework),
-                        isDisabled(methodMeta, testFramework),
+                        isTestParameterized(methodMeta, testFramework, isClassParameterized),
+                        isDisabled(methodMeta, testFramework, isClassDisabled),
                         testClassInfo,
                         sourceMethodInfo
                     )
@@ -98,9 +102,11 @@ class JvmTestsParser(
             .also { logger.debug { "Parsed ${it.size} ${language.displayName} test methods in test class ${classMeta.name}." } }
     }
 
-    private fun isTestMethod(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when (testFramework) {
+    private fun isTestMethod(methodMeta: MethodMeta, classMeta: ClassMeta, testFramework: TestFramework): Boolean = when (testFramework) {
         TestFramework.JUNIT3 -> methodMeta.name.startsWith("test")
         TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Test") || methodMeta.hasAnnotation("ParameterizedTest")
+        TestFramework.TESTNG -> methodMeta.hasAnnotation("Test") ||
+                (classMeta.hasAnnotation("Test") && methodMeta.isPublic && !methodMeta.hasAnnotation("DataProvider"))
         else -> methodMeta.hasAnnotation("Test")
     }
 
@@ -112,17 +118,41 @@ class JvmTestsParser(
         return displayName ?: ""
     }
 
-    private fun isParameterized(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when(testFramework) {
-        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("ParameterizedTest")
-        else -> false
-    }
+    private fun isClassParameterized(classMeta: ClassMeta, testFramework: TestFramework): Boolean =
+        testFramework == TestFramework.JUNIT4 &&
+                classMeta.getAnnotationValue("RunWith")?.endsWith("Parameterized.class") ?: false
 
-    private fun isDisabled(methodMeta: MethodMeta, testFramework: TestFramework): Boolean = when(testFramework) {
-        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Disabled")
-        TestFramework.TESTNG -> methodMeta.getAnnotationValue("Test", "enabled") == "false"
-        TestFramework.JUNIT4, TestFramework.KOTLIN_TEST -> methodMeta.hasAnnotation("Ignore")
-        else -> false
-    }
+    private fun isTestParameterized(
+        methodMeta: MethodMeta,
+        testFramework: TestFramework,
+        classParameterized: Boolean
+    ): Boolean =
+        when (testFramework) {
+            TestFramework.JUNIT5 -> methodMeta.hasAnnotation("ParameterizedTest")
+            TestFramework.JUNIT4 -> classParameterized ||
+                    methodMeta.hasAnnotation("Parameters") ||
+                    methodMeta.hasAnnotation("UseDataProvider")
+            TestFramework.TESTNG -> methodMeta.hasAnnotation("Parameters") ||
+                    methodMeta.getAnnotationValue("Test", "dataProvider") != null
+            else -> false
+        }
+
+    private fun isClassDisabled(classMeta: ClassMeta, testFramework: TestFramework): Boolean =
+        when (testFramework) {
+            TestFramework.JUNIT5 -> classMeta.hasAnnotation("Disabled")
+            TestFramework.TESTNG -> classMeta.getAnnotationValue("Test", "enabled") == "false"
+            TestFramework.JUNIT4, TestFramework.KOTLIN_TEST -> classMeta.hasAnnotation("Ignore")
+            else -> false
+        }
+
+    private fun isDisabled(methodMeta: MethodMeta, testFramework: TestFramework, classDisabled: Boolean): Boolean =
+        when (testFramework) {
+            TestFramework.JUNIT5 -> classDisabled || methodMeta.hasAnnotation("Disabled")
+            TestFramework.TESTNG -> methodMeta.getAnnotationValue("Test", "enabled") == "false" ||
+                    (classDisabled && !methodMeta.hasAnnotation("Test"))
+            TestFramework.JUNIT4, TestFramework.KOTLIN_TEST -> classDisabled || methodMeta.hasAnnotation("Ignore")
+            else -> false
+        }
 
     private data class Context(val testFramework: TestFramework, val classes: List<ClassMeta>)
 

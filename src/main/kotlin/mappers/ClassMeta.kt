@@ -14,6 +14,8 @@ interface ClassMeta {
     val language: Lang
     val methods: Iterable<MethodMeta>
     fun hasClassUsage(sourceClass: SourceClassInfo): Boolean
+    fun hasAnnotation(name: String): Boolean
+    fun getAnnotationValue(name: String, key: String? = null): String?
 }
 
 class JavaClassMeta(private val testFile: CompilationUnit, private val testClass: ClassOrInterfaceDeclaration) : ClassMeta {
@@ -26,6 +28,11 @@ class JavaClassMeta(private val testFile: CompilationUnit, private val testClass
 
     override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
         JavaClassUsageResolver.isSourceClassUsed(testFile, testClass, sourceClass)
+
+    override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotations, name)
+
+    override fun getAnnotationValue(name: String, key: String?): String? =
+        getAnnotationValue(testClass.annotations, name, key)
 }
 
 class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
@@ -38,4 +45,9 @@ class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
 
     override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
         KotlinClassUsageResolver.isSourceClassUsed(testClass.containingKtFile, testClass, sourceClass)
+
+    override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotationEntries, name)
+
+    override fun getAnnotationValue(name: String, key: String?): String? =
+        getAnnotationValue(testClass.annotationEntries, name, key)
 }

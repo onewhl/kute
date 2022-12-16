@@ -3,9 +3,11 @@ package mappers
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.allChildren
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 
 data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
     override val name = method.name!!
@@ -17,6 +19,7 @@ data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
             .trim()
     override val body: String
         get() = method.bodyExpression?.text ?: ""
+    override val isPublic = method.visibilityModifier()?.let { it.text == "public" } ?: true
 
     override fun hasMethodCall(sourceMethod: MethodMeta): Boolean {
         val callExpressions = PsiTreeUtil.findChildrenOfType(method.bodyBlockExpression, KtCallExpression::class.java)
@@ -31,24 +34,8 @@ data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
         return false
     }
 
-    override fun hasAnnotation(name: String): Boolean =
-        method.annotationEntries.any { it.shortName?.asString() == name }
+    override fun hasAnnotation(name: String): Boolean = hasAnnotation(method.annotationEntries, name)
 
     override fun getAnnotationValue(name: String, key: String?): String? =
-        method.annotationEntries.find { it.shortName?.asString() == name }?.let {
-            if (key == null) it.getValue() else it.getValue(key)
-        }
-
-    private fun ValueArgument.toUnescapedString() =
-        this.getArgumentExpression()?.findDescendantOfType<LeafPsiElement> { !it.textMatches("\"") } ?.text
-
-    private fun KtAnnotationEntry.getValue(name: String): String? =
-        this.valueArguments.find { arg ->
-            arg.getArgumentName().let { it != null && it.asName.asString() == name }
-        } ?.toUnescapedString()
-
-    private fun KtAnnotationEntry.getValue(): String? =
-        this.valueArguments.find {
-            it.getArgumentName().let { name -> name == null || name.asName.asString() == "value" }
-        } ?.toUnescapedString()
+        getAnnotationValue(method.annotationEntries, name, key)
 }

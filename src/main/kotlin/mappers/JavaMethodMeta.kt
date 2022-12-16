@@ -10,6 +10,7 @@ data class JavaMethodMeta(val method: MethodDeclaration) : MethodMeta {
     override val parameters = method.parameters as List<Any>
     override val body: String
         get() = method.body.orElse(null)?.toString() ?: ""
+    override val isPublic = method.isPublic
 
     // JavaParser binds at most one line comment to block, so we need to check orphanComments to find other lines
     override val comment: String
@@ -45,20 +46,7 @@ data class JavaMethodMeta(val method: MethodDeclaration) : MethodMeta {
         method.annotations.any { it.name.identifier == name }
 
     override fun getAnnotationValue(name: String, key: String?): String? =
-        method.annotations.find { it.name.identifier == name }?.let {
-            if (key == null) it.getValue() else it.getValue(key)
-        }
-
-    private fun Expression.toUnescapedString() = if (this is StringLiteralExpr) this.asString() else this.toString()
-
-    private fun AnnotationExpr.getValue(name: String): String? =
-        (this as? NormalAnnotationExpr)?.pairs?.find { it.name.asString() == name }?.value?.toUnescapedString()
-
-    private fun AnnotationExpr.getValue(): String? = when(this) {
-        is SingleMemberAnnotationExpr -> this.memberValue.toUnescapedString()
-        is NormalAnnotationExpr -> this.pairs.find { it.name.asString() == "value" } ?.value?.toUnescapedString()
-        else -> null
-    }
+        getAnnotationValue(method.annotations, name, key)
 
     /**
      * Walks on method call expressions inside test method searching for call of source method.
