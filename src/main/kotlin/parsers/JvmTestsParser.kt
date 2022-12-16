@@ -102,13 +102,15 @@ class JvmTestsParser(
             .also { logger.debug { "Parsed ${it.size} ${language.displayName} test methods in test class ${classMeta.name}." } }
     }
 
-    private fun isTestMethod(methodMeta: MethodMeta, classMeta: ClassMeta, testFramework: TestFramework): Boolean = when (testFramework) {
-        TestFramework.JUNIT3 -> methodMeta.name.startsWith("test")
-        TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Test") || methodMeta.hasAnnotation("ParameterizedTest")
-        TestFramework.TESTNG -> methodMeta.hasAnnotation("Test") ||
-                (classMeta.hasAnnotation("Test") && methodMeta.isPublic && !methodMeta.hasAnnotation("DataProvider"))
-        else -> methodMeta.hasAnnotation("Test")
-    }
+    private fun isTestMethod(methodMeta: MethodMeta, classMeta: ClassMeta, testFramework: TestFramework): Boolean =
+        when (testFramework) {
+            TestFramework.JUNIT3 -> methodMeta.name.startsWith("test")
+            TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Test") || methodMeta.hasAnnotation("ParameterizedTest")
+            TestFramework.TESTNG -> methodMeta.hasAnnotation("Test") ||
+                    (classMeta.hasAnnotation("Test") && methodMeta.isPublic && !methodMeta.hasAnnotation("DataProvider"))
+
+            else -> methodMeta.hasAnnotation("Test")
+        }
 
     private fun getDisplayName(methodMeta: MethodMeta, testFramework: TestFramework): String {
         var displayName = methodMeta.getAnnotationValue("DisplayName")
@@ -120,7 +122,11 @@ class JvmTestsParser(
 
     private fun isClassParameterized(classMeta: ClassMeta, testFramework: TestFramework): Boolean =
         testFramework == TestFramework.JUNIT4 &&
-                classMeta.getAnnotationValue("RunWith")?.endsWith("Parameterized.class") ?: false
+                classMeta.getAnnotationValue("RunWith")?.let {
+                    it.replace("::", ".")
+                        .removeSuffix(".class")
+                        .substringAfterLast('.') == "Parameterized"
+                } ?: false
 
     private fun isTestParameterized(
         methodMeta: MethodMeta,
@@ -132,8 +138,10 @@ class JvmTestsParser(
             TestFramework.JUNIT4 -> classParameterized ||
                     methodMeta.hasAnnotation("Parameters") ||
                     methodMeta.hasAnnotation("UseDataProvider")
+
             TestFramework.TESTNG -> methodMeta.hasAnnotation("Parameters") ||
                     methodMeta.getAnnotationValue("Test", "dataProvider") != null
+
             else -> false
         }
 
@@ -150,6 +158,7 @@ class JvmTestsParser(
             TestFramework.JUNIT5 -> classDisabled || methodMeta.hasAnnotation("Disabled")
             TestFramework.TESTNG -> methodMeta.getAnnotationValue("Test", "enabled") == "false" ||
                     (classDisabled && !methodMeta.hasAnnotation("Test"))
+
             TestFramework.JUNIT4, TestFramework.KOTLIN_TEST -> classDisabled || methodMeta.hasAnnotation("Ignore")
             else -> false
         }

@@ -9,6 +9,9 @@ import TestMethodInfo
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 import org.junit.jupiter.api.Assumptions
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junitpioneer.jupiter.cartesian.CartesianTest
 import org.junitpioneer.jupiter.cartesian.CartesianTest.Enum
 import org.junitpioneer.jupiter.cartesian.CartesianTest.Values
@@ -39,7 +42,7 @@ class TestMethodExtractionTests {
     fun `tests defined using fqcn instead of import should be extracted`(
         @Enum framework: TestFramework,
         @Enum lang: Lang
-    ) = when(framework) {
+    ) = when (framework) {
         TestFramework.JUNIT3 -> "assertEquals(1, 1)"
         TestFramework.JUNIT4 -> "org.junit.Assert.assertEquals(1, 1)"
         TestFramework.JUNIT5 -> "org.junit.jupiter.api.Assertions.assertEquals(1, 1)"
@@ -85,7 +88,7 @@ class TestMethodExtractionTests {
     fun `disabled tests extracted`(
         @Enum(names = ["JUNIT3"], mode = Enum.Mode.EXCLUDE) framework: TestFramework,
         @Enum lang: Lang,
-        @Values(strings=["Method", "Class"]) level: String
+        @Values(strings = ["Method", "Class"]) level: String
     ) = runTest("DisabledOn${level}Level", framework, lang) { classInfo ->
         listOf(
             TestMethodInfo(
@@ -104,27 +107,64 @@ class TestMethodExtractionTests {
     @CartesianTest(name = "All types of comments supported in {0} tests")
     fun `all types of comments supported`(@Enum lang: Lang) = mapOf(
         "testSlashComment" to "// This is a first line of comments\n// This is a second line of comments",
-        "testMultiLineComment" to when(lang) {
-            Lang.JAVA ->   "/*\n     This is a multiline comment\n     */"
+        "testMultiLineComment" to when (lang) {
+            Lang.JAVA -> "/*\n     This is a multiline comment\n     */"
             Lang.KOTLIN -> "/*\n    This is a multiline comment\n    */"
         },
-        "testJavadocComment" to when(lang) {
-            Lang.JAVA ->   "/**\n *     This is Javadoc comment\n */"
+        "testJavadocComment" to when (lang) {
+            Lang.JAVA -> "/**\n *     This is Javadoc comment\n */"
             Lang.KOTLIN -> "/**\n    This is Javadoc comment\n    */"
-        }).let { testNameToComment -> runTest("Comment", TestFramework.JUNIT4, lang) { classInfo ->
-        testNameToComment.map {
+        }
+    ).let { testNameToComment ->
+        runTest("Comment", TestFramework.JUNIT4, lang) { classInfo ->
+            testNameToComment.map {
+                TestMethodInfo(
+                    name = it.key,
+                    body = formatBlock("assertEquals(1, 1)", lang),
+                    comment = it.value,
+                    displayName = "",
+                    isParametrised = false,
+                    isDisabled = false,
+                    classInfo = classInfo,
+                    sourceMethod = null
+                )
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        value = [
+            "JUNIT4,JAVA,Parameterized",
+            "JUNIT4,KOTLIN,Parameterized",
+            "JUNIT4,JAVA,JUnitParams",
+            "JUNIT4,KOTLIN,JUnitParams",
+            "JUNIT4,JAVA,DataProvider",
+            "JUNIT4,KOTLIN,DataProvider",
+            "JUNIT5,JAVA,Parameterized",
+            "JUNIT5,KOTLIN,Parameterized",
+            "TESTNG,JAVA,DataProvider",
+            "TESTNG,KOTLIN,DataProvider",
+        ]
+    )
+    @DisplayName("Supported {2} for {0} tests in {1}")
+    fun `different types of tests parameterization supported`(
+        testFramework: TestFramework,
+        lang: Lang,
+        parameterizationType: String
+    ) = runTest(parameterizationType, testFramework, lang) { classInfo ->
+        listOf(
             TestMethodInfo(
-                name = it.key,
-                body = formatBlock("assertEquals(1, 1)", lang),
-                comment = it.value,
+                name = "testParameterized",
+                body = formatBlock("assertEquals(arg, arg)", lang),
+                comment = "",
                 displayName = "",
-                isParametrised = false,
+                isParametrised = true,
                 isDisabled = false,
                 classInfo = classInfo,
                 sourceMethod = null
             )
-            }
-        }
+        )
     }
 
 
