@@ -1,11 +1,9 @@
 package project;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.testng.annotations.Test;
 
-public class DisabledJavaTest {
-    @Test
-    @Ignore
+@Test(enabled = false)
+public class DisabledOnClassLevelJavaTest {
     public void testDisabled() {
         throw new UnsupportedOperationException("implement later");
     }

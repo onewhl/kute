@@ -1,11 +1,11 @@
 package project;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.Ignore;
+import org.junit.Test;
 
-public class DisabledJavaTest {
+@Ignore
+public class DisabledOnClassLevelJavaTest {
     @Test
-    @Disabled
     public void testDisabled() {
         throw new UnsupportedOperationException("implement later");
     }

@@ -3,8 +3,9 @@ package project
 import org.junit.Ignore
 import org.junit.Test
 
-class DisabledKotlinTest {
+
+@Ignore
+class DisabledOnClassLevelKotlinTest {
     @Test
-    @Ignore
     fun testDisabled(): Unit = TODO("implement later")
 }

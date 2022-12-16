@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 import org.junit.jupiter.api.Assumptions
 import org.junitpioneer.jupiter.cartesian.CartesianTest
 import org.junitpioneer.jupiter.cartesian.CartesianTest.Enum
+import org.junitpioneer.jupiter.cartesian.CartesianTest.Values
 import java.io.File
 
 
@@ -80,11 +81,12 @@ class TestMethodExtractionTests {
         )
     }
 
-    @CartesianTest(name = "Disabled {0} tests in {1} should be extracted")
+    @CartesianTest(name = "{0} tests in {1} disabled on {2} level should be extracted")
     fun `disabled tests extracted`(
         @Enum(names = ["JUNIT3"], mode = Enum.Mode.EXCLUDE) framework: TestFramework,
-        @Enum lang: Lang
-    ) = runTest("Disabled", framework, lang) { classInfo ->
+        @Enum lang: Lang,
+        @Values(strings=["Method", "Class"]) level: String
+    ) = runTest("DisabledOn${level}Level", framework, lang) { classInfo ->
         listOf(
             TestMethodInfo(
                 name = "testDisabled",

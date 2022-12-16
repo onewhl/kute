@@ -9,4 +9,5 @@ interface MethodMeta {
     fun hasMethodCall(sourceMethod: MethodMeta): Boolean
     fun hasAnnotation(name: String): Boolean
     fun getAnnotationValue(name: String, key: String? = null): String?
+    val isPublic: Boolean
 }
