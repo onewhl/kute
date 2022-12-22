@@ -1,6 +1,6 @@
 package mappers
 
-import SourceClassInfo
+import SourceClassAndLocation
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.MethodDeclaration
@@ -13,7 +13,7 @@ interface ClassMeta {
     val packageName: String
     val language: Lang
     val methods: Iterable<MethodMeta>
-    fun hasClassUsage(sourceClass: SourceClassInfo): Boolean
+    fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean
     fun hasAnnotation(name: String): Boolean
     fun getAnnotationValue(name: String, key: String? = null): String?
 }
@@ -26,8 +26,8 @@ class JavaClassMeta(private val testFile: CompilationUnit, private val testClass
     override val methods: Iterable<MethodMeta>
         get() = testClass.findAll(MethodDeclaration::class.java).map { JavaMethodMeta(it) }
 
-    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
-        JavaClassUsageResolver.isSourceClassUsed(testFile, testClass, sourceClass)
+    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean =
+        JavaClassUsageResolver.isSourceClassUsed(testFile, testClass, sourceClassAndLocation.sourceClass)
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotations, name)
 
@@ -43,8 +43,8 @@ class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
     override val methods: Iterable<MethodMeta>
         get() = testClass.declarations.mapNotNull { (it as? KtNamedFunction)?.let { KotlinMethodMeta(it)} }
 
-    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean =
-        KotlinClassUsageResolver.isSourceClassUsed(testClass.containingKtFile, testClass, sourceClass)
+    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean =
+        KotlinClassUsageResolver.isSourceClassUsed(testClass.containingKtFile, testClass, sourceClassAndLocation.sourceClass)
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotationEntries, name)
 

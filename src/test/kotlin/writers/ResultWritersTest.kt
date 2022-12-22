@@ -23,7 +23,7 @@ class ResultWritersTest {
     private fun provideTestMethods(): List<TestMethodInfo> {
         val projectInfo = ProjectInfo("My Project", BuildSystem.MAVEN)
         val moduleInfo = ModuleInfo("main", projectInfo)
-        val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA, File("Simple.java"))
+        val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA)
         val testClassInfo =
             TestClassInfo("SimpleTest", "com.test", projectInfo, moduleInfo, sourceClass, Lang.JAVA, TestFramework.JUNIT4)
         val sourceMethod = SourceMethodInfo("run", "", sourceClass)

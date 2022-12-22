@@ -40,9 +40,10 @@ data class SourceClassInfo(
     val name: String,
     @SerialName("package") val pkg: String,
     val moduleInfo: ModuleInfo,
-    val language: Lang,
-    @Transient val file: File = throw IllegalStateException("file must be provided")
+    val language: Lang
 )
+
+data class SourceClassAndLocation(val sourceClass: SourceClassInfo, val file: File)
 
 @Serializable
 data class ProjectInfo(
