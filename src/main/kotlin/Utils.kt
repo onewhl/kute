@@ -8,3 +8,7 @@ inline fun <T> namedThread(name: String, action: () -> T): T {
         thread.name = oldName
     }
 }
+
+class ParallelTask<R>(private val task: () -> R): java.util.concurrent.RecursiveTask<R>() {
+    override fun compute(): R = task()
+}

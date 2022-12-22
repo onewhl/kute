@@ -1,6 +1,7 @@
 package parsers
 
 import ModuleInfo
+import ParallelTask
 import TestClassInfo
 import TestFramework
 import TestMethodInfo
@@ -10,7 +11,6 @@ import namedThread
 import parsers.TestFileFilter.Companion.findFilesInTestDir
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.stream.Collectors
 
 private val logger = KotlinLogging.logger {}
 
@@ -36,11 +36,19 @@ class JvmTestsParser(
         val progressLogger = ProgressLogger(classesInTestDir.size) { cnt, total ->
             "Parsed $cnt/$total ${language.displayName} test files$hint."
         }
-        return classesInTestDir.parallelStream()
-            .map { tryParse(it).also { progressLogger.visit() } }
-            .filter { it != null }
-            .flatMap { ctx -> ctx!!.classes.flatMap { parseTestMethodsFromClass(it, ctx.testFramework) }.stream() }
-            .collect(Collectors.toList())
+
+        // Use manual operations with ParallelTask instead of .parallelStream() to enable splitting work for each thread
+        // by file instead of sequence. Otherwise, if we got test_classes << src_classes, all test classes may be
+        // sent to a single thread
+        return classesInTestDir.asReversed().map {
+            ParallelTask {
+                tryParse(it)
+                    .also { progressLogger.visit() }
+                    ?.let { (framework, classes) -> classes.flatMap { parseTestMethodsFromClass(it, framework) } }
+                    ?: emptyList()
+            }.fork()
+        }.asReversed()
+            .flatMap { it.join() }
             .also { logger.info { "Finished processing ${language.displayName} files in module: $path. Found ${it.size} test methods." } }
     }
 
