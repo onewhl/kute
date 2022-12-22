@@ -1,6 +1,7 @@
 package mappers
 
 import ModuleInfo
+import SourceClassAndLocation
 import SourceClassInfo
 import parsers.detectLangByExtension
 import java.io.File
@@ -24,13 +25,13 @@ class ClassMapper(
     private val classNameToSourcesMap: Map<String, List<File>>,
     private val packageNameResolver: PackageNameResolver = RegexPackageNameResolver
 ) {
-    fun findSourceClass(testClassMeta: ClassMeta): SourceClassInfo? {
+    fun findSourceClass(testClassMeta: ClassMeta): SourceClassAndLocation? {
         return classNameTokenSubsetHeuristics(testClassMeta)
     }
 
-    private fun classNameTokenSubsetHeuristics(testClassMeta: ClassMeta): SourceClassInfo? {
+    private fun classNameTokenSubsetHeuristics(testClassMeta: ClassMeta): SourceClassAndLocation? {
         val testClassNameWithoutTestSuffix = removeSingleTestSuffixOrPrefix(testClassMeta.name)
-        val sourceClassCandidates = mutableListOf<SourceClassInfo>()
+        val sourceClassCandidates = mutableListOf<SourceClassAndLocation>()
         processClassNameCandidate(testClassNameWithoutTestSuffix, testClassMeta, sourceClassCandidates)
         if (sourceClassCandidates.size == 1) return sourceClassCandidates[0]
 
@@ -41,21 +42,21 @@ class ClassMapper(
             }
         }
 
-        return sourceClassCandidates.firstOrNull { it.pkg == testClassMeta.packageName }
+        return sourceClassCandidates.firstOrNull { it.sourceClass.pkg == testClassMeta.packageName }
             ?: sourceClassCandidates.firstOrNull()
     }
 
     private fun processClassNameCandidate(
         classNameCandidate: String,
         testClassMeta: ClassMeta,
-        sink: MutableList<SourceClassInfo>
+        sink: MutableList<SourceClassAndLocation>
     ) {
         classNameToSourcesMap[classNameCandidate]?.also { matchingFiles ->
             if (matchingFiles.size == 1) {
-                val info =
+                val sourceClassAndLocation =
                     createSourceClassInfo(classNameCandidate, matchingFiles[0], testClassMeta)
-                if (testClassMeta.hasClassUsage(info)) {
-                    sink += info
+                if (testClassMeta.hasClassUsage(sourceClassAndLocation)) {
+                    sink += sourceClassAndLocation
                 }
             } else {
                 val candidates = matchingFiles.map { createSourceClassInfo(classNameCandidate, it, testClassMeta) }
@@ -64,15 +65,15 @@ class ClassMapper(
         }
     }
 
-    private fun createSourceClassInfo(className: String, file: File, testClassMeta: ClassMeta): SourceClassInfo {
+    private fun createSourceClassInfo(className: String, file: File, testClassMeta: ClassMeta): SourceClassAndLocation {
         val packageName = if (isSourceClassPackageNameSameAsTest(file, testClassMeta)) {
             testClassMeta.packageName
         } else {
             packageNameResolver.extractPackageName(file)
         }
-        return SourceClassInfo(
-            className, packageName, module, detectLangByExtension(file.extension), file = file
-        )
+        return SourceClassAndLocation(SourceClassInfo(
+            className, packageName, module, detectLangByExtension(file.extension)
+        ), file)
     }
 
     companion object {

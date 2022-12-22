@@ -76,13 +76,13 @@ class JvmTestsParser(
     }
 
     private fun parseTestMethodsFromClass(classMeta: ClassMeta, testFramework: TestFramework): List<TestMethodInfo> {
-        val sourceClass = classMapper.findSourceClass(classMeta)
+        val sourceClassAndLocation = classMapper.findSourceClass(classMeta)
         val testClassInfo = TestClassInfo(
             classMeta.name,
             classMeta.packageName,
             module.projectInfo,
             module,
-            sourceClass,
+            sourceClassAndLocation?.sourceClass,
             language,
             testFramework
         )
@@ -92,8 +92,8 @@ class JvmTestsParser(
         return classMeta.methods
             .mapNotNull { it ->
                 it.takeIf { isTestMethod(it, classMeta, testFramework) }?.let { methodMeta ->
-                    val sourceMethodInfo = sourceClass?.let {
-                        DelegatingMethodMapper.findSourceMethod(methodMeta, it, sourceClass.file)
+                    val sourceMethodInfo = sourceClassAndLocation?.let {
+                        DelegatingMethodMapper.findSourceMethod(methodMeta, it.sourceClass, it.file)
                     }
                     TestMethodInfo(
                         methodMeta.name,

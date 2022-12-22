@@ -3,6 +3,7 @@ package mappers
 import BuildSystem
 import ModuleInfo
 import ProjectInfo
+import SourceClassAndLocation
 import SourceClassInfo
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -18,11 +19,14 @@ class ClassMapperTest {
         val classNameToSources = mapOf("Entity" to listOf(entityJava))
         val mapper = ClassMapper(module, classNameToSources) { "io.test" }
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { true }
-        val expectedSourceClass = SourceClassInfo("Entity", "io.test", module, Lang.JAVA, entityJava)
+        val expectedSourceClassAndLocation = SourceClassAndLocation(
+            SourceClassInfo("Entity", "io.test", module, Lang.JAVA),
+            entityJava
+        )
         assertThat(mapper.findSourceClass(testClass))
             .usingRecursiveComparison()
             .ignoringFields("id")
-            .isEqualTo(expectedSourceClass)
+            .isEqualTo(expectedSourceClassAndLocation)
     }
 
     @Test
@@ -32,12 +36,14 @@ class ClassMapperTest {
         )
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { true }
-        val expectedFile = File("src/io/test/Entity.java")
-        val expectedSourceClass = SourceClassInfo("Entity", "io.test", module, Lang.JAVA,  expectedFile)
+        val expectedSourceClassAndLocation = SourceClassAndLocation(
+            SourceClassInfo("Entity", "io.test", module, Lang.JAVA),
+            File("src/io/test/Entity.java")
+        )
         assertThat(mapper.findSourceClass(testClass))
             .usingRecursiveComparison()
             .ignoringFields("id")
-            .isEqualTo(expectedSourceClass)
+            .isEqualTo(expectedSourceClassAndLocation)
     }
 
     @Test
@@ -48,11 +54,14 @@ class ClassMapperTest {
         )
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { it.file == expectedFile }
-        val expectedSourceClass = SourceClassInfo("Entity", "io.test.model", module, Lang.JAVA,  expectedFile)
+        val expectedSourceClassAndLocation = SourceClassAndLocation(
+            SourceClassInfo("Entity", "io.test.model", module, Lang.JAVA),
+            expectedFile
+        )
         assertThat(mapper.findSourceClass(testClass))
             .usingRecursiveComparison()
             .ignoringFields("id")
-            .isEqualTo(expectedSourceClass)
+            .isEqualTo(expectedSourceClassAndLocation)
     }
 
     @Test
@@ -61,11 +70,14 @@ class ClassMapperTest {
         val classNameToSources = mapOf("Entity" to listOf(expectedFile))
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("SerializingEntityAsJsonTest", "io.test", Lang.JAVA) { it.file == expectedFile }
-        val expectedSourceClass = SourceClassInfo("Entity", "io.test.model", module, Lang.JAVA,  expectedFile)
+        val expectedSourceClassAndLocation = SourceClassAndLocation(
+            SourceClassInfo("Entity", "io.test.model", module, Lang.JAVA),
+            expectedFile
+        )
         assertThat(mapper.findSourceClass(testClass))
             .usingRecursiveComparison()
             .ignoringFields("id")
-            .isEqualTo(expectedSourceClass)
+            .isEqualTo(expectedSourceClassAndLocation)
     }
 }
 
@@ -73,15 +85,15 @@ class TestClassMeta(
     override val name: String,
     override val packageName: String,
     override val language: Lang,
-    private val classUsageResolver: (SourceClassInfo) -> Boolean
+    private val classUsageResolver: (SourceClassAndLocation) -> Boolean
 ) : ClassMeta {
     override val methods: Iterable<MethodMeta> = emptyList()
-    override fun hasClassUsage(sourceClass: SourceClassInfo): Boolean = classUsageResolver(sourceClass)
+    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean = classUsageResolver(sourceClassAndLocation)
     override fun hasAnnotation(name: String): Boolean = false
     override fun getAnnotationValue(name: String, key: String?) = null
 }
 
-class PathBasedPackageResolver(private val prefix: String): PackageNameResolver {
+class PathBasedPackageResolver(private val prefix: String) : PackageNameResolver {
     override fun extractPackageName(file: File): String = file.toString().let {
         it.substring(0, it.lastIndexOf('/'))
             .removePrefix(prefix)
