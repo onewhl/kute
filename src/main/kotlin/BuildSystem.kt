@@ -5,15 +5,20 @@ private val logger = KotlinLogging.logger {}
 
 enum class BuildSystem {
     GRADLE {
-        private val moduleNameRegex = "include\\s+['\"]([^']+?)['\"]".toRegex()
+        private val moduleNameRegex = "include[(\\s]+['\"]([^']+?)['\"]".toRegex()
 
-        override fun getProjectModules(projectPath: File): Map<String, File> {
-            val settings = File(projectPath, "settings.gradle").takeIf { it.isFile }
-                ?: File(projectPath, "settings.gradle.kts").takeIf { it.isFile }
-            return settings?.let {
+        private fun findConfigFile(projectPath: File, name:String) =
+            File(projectPath, "$name.gradle").takeIf { it.isFile }
+                ?: File(projectPath, "$name.gradle.kts").takeIf { it.isFile }
+
+        override fun getProjectModules(projectPath: File): Map<String, File> =
+            findConfigFile(projectPath, "settings")?.let { settings ->
                 extractModuleNames(projectPath, settings, moduleNameRegex, 1)
             } ?: super.getProjectModules(projectPath)
-        }
+
+        override fun supportsTestDirFiltering(path: File): Boolean =
+            findConfigFile(path, "build")?.let { !it.readText().contains("sourceSets") }
+                ?: true
     },
     MAVEN {
         private val moduleNameRegex = "(?<=<module>)[^<]*(?=</module>)".toRegex()
@@ -26,8 +31,7 @@ enum class BuildSystem {
     },
     ANT, OTHER;
 
-    val supportsTestDirFiltering
-        get() = this == MAVEN || this == GRADLE
+    open fun supportsTestDirFiltering(path: File) = this == MAVEN
 
     open fun getProjectModules(projectPath: File): Map<String, File> =
         mapOf(projectPath.name to projectPath)

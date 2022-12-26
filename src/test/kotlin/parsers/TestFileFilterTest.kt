@@ -16,7 +16,15 @@ class TestFileFilterTest {
     ) {
         val filter = TestFileFilter(separator)
         val sourceFiles = listOf("Test1.java", "Test2.java", "Entity.java").map { File(it) }
-        assertEquals(sourceFiles, filter.findFilesInTestDirImpl(Lang.JAVA, buildSystem, sourceFiles))
+        assertEquals(sourceFiles, filter.findFilesInTestDirImpl(Lang.JAVA, buildSystem, false, sourceFiles))
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = ["/", "\\"])
+    fun `test that filtering does not happen in GRADLE projects if disallowed`(separator: String) {
+        val filter = TestFileFilter(separator)
+        val sourceFiles = listOf("Test1.java", "Test2.java", "Entity.java").map { File(it) }
+        assertEquals(sourceFiles, filter.findFilesInTestDirImpl(Lang.JAVA, BuildSystem.GRADLE, false, sourceFiles))
     }
 
     @ParameterizedTest
@@ -33,7 +41,12 @@ class TestFileFilterTest {
         ).map { File(it.replace("/", pathSeparator)) }
         val expectedOutput = listOf("src/test/Test2.java",  "/home/dev/project/src/test/Test3.java")
             .map { File(it.replace("/", pathSeparator)) }
-        assertEquals(expectedOutput, filter.findFilesInTestDirImpl(Lang.JAVA, BuildSystem.MAVEN, sourceFiles))
+        assertEquals(expectedOutput, filter.findFilesInTestDirImpl(
+            Lang.JAVA,
+            BuildSystem.MAVEN,
+            true,
+            sourceFiles
+        ))
     }
 
     @ParameterizedTest
@@ -54,6 +67,11 @@ class TestFileFilterTest {
             "src/nonJvmTest/Test4.java",
             "/home/dev/project/src/commonTest/Test5.java"
         ).map { File(it.replace("/", pathSeparator)) }
-        assertEquals(expectedOutput, filter.findFilesInTestDirImpl(Lang.JAVA, BuildSystem.GRADLE, sourceFiles))
+        assertEquals(expectedOutput, filter.findFilesInTestDirImpl(
+            Lang.JAVA,
+            BuildSystem.GRADLE,
+            true,
+            sourceFiles
+        ))
     }
 }

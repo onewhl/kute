@@ -29,8 +29,9 @@ class JvmTestsParser(
         files.count { it.extension == language.extension }
             .also { logger.info { "Found: $it ${language.displayName} files." } }
 
-        val classesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, files)
-        val hint = if (module.projectInfo.buildSystem.supportsTestDirFiltering) " in test dir" else ""
+        val allowPrefilter = module.projectInfo.buildSystem.supportsTestDirFiltering(path)
+        val classesInTestDir = findFilesInTestDir(language, module.projectInfo.buildSystem, allowPrefilter, files)
+        val hint = if (allowPrefilter) " in test dir" else ""
         logger.info { "Found: ${classesInTestDir.size} ${language.displayName} classes$hint." }
 
         val progressLogger = ProgressLogger(classesInTestDir.size) { cnt, total ->
