@@ -9,7 +9,7 @@ import writers.JsonResultWriter
 import writers.OutputType
 import java.io.File
 import java.io.Writer
-import java.util.concurrent.Callable
+import java.util.concurrent.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -38,26 +38,37 @@ class Runner(
     fun run() {
         logger.info { "Start processing projects in ${projectsPath.path}..." }
 
+        val tasks = LinkedBlockingQueue<Future<List<TestMethodInfo>>>()
+        var projectCount = 0
+
         projectsPath.forEachLine { path ->
             if (path.startsWith("http")) {
+                ++projectCount
                 taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
-                    .thenCompose { repoPath ->
-                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
-                    }.thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
-                        writeTestMethodInfos(methodInfos, resultWriter)
-                    }}
+                    .handle { repoPath, ex ->
+                        tasks += if (ex != null) CompletableFuture.failedFuture(ex)
+                        else taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                    }
             } else if (path.isNotBlank()) {
-                taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
-                    .thenAccept { methodInfos -> taskExecutor.runResultSavingTask {
-                        writeTestMethodInfos(methodInfos, resultWriter)
-                    }}
+                ++projectCount
+                tasks += taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
             }
         }
-        
-        taskExecutor.join()
+
+        repeat(projectCount) {
+            getFutureValue(tasks.take())?.let { writeTestMethodInfos(it, resultWriter) }
+        }
+
         resultWriter.close()
         logger.info { "Finished processing projects." }
     }
+
+    private fun getFutureValue(future: Future<List<TestMethodInfo>>): List<TestMethodInfo>? = try {
+        future.get()
+    } catch (e: ExecutionException) {
+        null
+    }
+
 
     private fun writeTestMethodInfos(testMethodInfos: List<TestMethodInfo>, resultWriter: ResultWriter) {
         if (testMethodInfos.isNotEmpty()) {
