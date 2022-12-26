@@ -22,16 +22,12 @@ data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
     override val isPublic = method.visibilityModifier()?.let { it.text == "public" } ?: true
 
     override fun hasMethodCall(sourceMethod: MethodMeta): Boolean {
-        val callExpressions = PsiTreeUtil.findChildrenOfType(method.bodyBlockExpression, KtCallExpression::class.java)
-        callExpressions.forEach {
-            if (it.calleeExpression != null &&
+        val callExpressions = PsiTreeUtil.findChildrenOfType(method.bodyExpression, KtCallExpression::class.java)
+        return callExpressions.any {
+            it.calleeExpression != null &&
                 it.calleeExpression!!.text == sourceMethod.name &&
                 it.valueArguments.size == sourceMethod.parameters.size
-            ) {
-                return true
-            }
         }
-        return false
     }
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(method.annotationEntries, name)
