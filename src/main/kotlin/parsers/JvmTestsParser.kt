@@ -67,7 +67,7 @@ class JvmTestsParser(
                 content.contains("kotlin.test") -> TestFramework.KOTLIN_TEST
                 else -> null
             }?.let { framework ->
-                metaFactory.parse(file, content)
+                metaFactory.parseClasses(file, content)
                     .takeIf { it.isNotEmpty() }
                     ?.let { Context(framework, it) }
             }
@@ -88,12 +88,17 @@ class JvmTestsParser(
         )
         val isClassParameterized = isClassParameterized(classMeta, testFramework)
         val isClassDisabled = isClassDisabled(classMeta, testFramework)
+        var sourceMethodCandidates: List<MethodMeta>? = null
 
         return classMeta.methods
             .mapNotNull { it ->
                 it.takeIf { isTestMethod(it, classMeta, testFramework) }?.let { methodMeta ->
                     val sourceMethodInfo = sourceClassAndLocation?.let {
-                        DelegatingMethodMapper.findSourceMethod(methodMeta, it.sourceClass, it.file)
+                        if (sourceMethodCandidates == null) {
+                            sourceMethodCandidates = getMetaFactoryByLanguage(detectLangByExtension(it.file.extension))
+                                .parseMethods(it.file)
+                        }
+                        SourceMethodMapper.findSourceMethod(methodMeta, it.sourceClass, sourceMethodCandidates!!)
                     }
                     TestMethodInfo(
                         methodMeta.name,
@@ -116,7 +121,6 @@ class JvmTestsParser(
             TestFramework.JUNIT5 -> methodMeta.hasAnnotation("Test") || methodMeta.hasAnnotation("ParameterizedTest")
             TestFramework.TESTNG -> methodMeta.hasAnnotation("Test") ||
                     (classMeta.hasAnnotation("Test") && methodMeta.isPublic && !methodMeta.hasAnnotation("DataProvider"))
-
             else -> methodMeta.hasAnnotation("Test")
         }
 
