@@ -11,14 +11,14 @@ class BuildSystemTest {
 
             include "project:projectj"
             include "project:core"
-            include "project:server"
+            include(":project:server")
         """.trimIndent()
         File(projectPath, "settings.gradle").writeText(settings)
         val resolvedModules = BuildSystem.GRADLE.getProjectModules(projectPath)
         val expectedModules = mapOf(
             "project:projectj" to File(projectPath, "project/projectj"),
             "project:core" to File(projectPath, "project/core"),
-            "project:server" to File(projectPath, "project/server"),
+            ":project:server" to File(projectPath, "project/server"),
             )
         assertEquals(expectedModules, resolvedModules)
     }

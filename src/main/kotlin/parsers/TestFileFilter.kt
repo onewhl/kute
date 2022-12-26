@@ -10,17 +10,31 @@ class TestFileFilter(separator: String) {
         .replace("\\", "\\\\")
         .toPattern()
 
-    internal fun findFilesInTestDirImpl(language: Lang, buildSystem: BuildSystem, sourceFiles: List<File>): List<File> =
-        when (buildSystem) {
-            BuildSystem.GRADLE -> Predicate<File> { testPathPrefixRegex.matcher(it.toString()).find() }
-            BuildSystem.MAVEN -> Predicate<File> { it.toString().contains(simpleTestPathPrefix) }
+    internal fun findFilesInTestDirImpl(
+        language: Lang,
+        buildSystem: BuildSystem,
+        allowPrefilter: Boolean,
+        sourceFiles: List<File>
+    ): List<File> =
+        when {
+            buildSystem == BuildSystem.GRADLE && allowPrefilter -> Predicate<File> {
+                testPathPrefixRegex.matcher(it.toString()).find()
+            }
+            buildSystem == BuildSystem.MAVEN && allowPrefilter -> Predicate<File> {
+                it.toString().contains(simpleTestPathPrefix)
+            }
             else -> Predicate<File> { true }
         }.let { predicate -> sourceFiles.filter { it.extension == language.extension && predicate.test(it) } }
 
     companion object {
         private val INSTANCE = TestFileFilter(File.separator)
 
-        fun findFilesInTestDir(language: Lang, buildSystem: BuildSystem, sourceFiles: List<File>): List<File> =
-            INSTANCE.findFilesInTestDirImpl(language, buildSystem, sourceFiles)
+        fun findFilesInTestDir(
+            language: Lang,
+            buildSystem: BuildSystem,
+            allowPrefilter: Boolean,
+            sourceFiles: List<File>
+        ): List<File> =
+            INSTANCE.findFilesInTestDirImpl(language, buildSystem, allowPrefilter, sourceFiles)
     }
 }
