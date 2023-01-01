@@ -41,7 +41,10 @@ data class SourceClassInfo(
     @SerialName("package") val pkg: String,
     val moduleInfo: ModuleInfo,
     val language: Lang
-)
+) {
+    val fqcn
+        get() = if (pkg == "") name else "${pkg}.${name}"
+}
 
 data class SourceClassAndLocation(val sourceClass: SourceClassInfo, val file: File)
 
