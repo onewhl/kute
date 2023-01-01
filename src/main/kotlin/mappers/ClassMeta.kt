@@ -5,7 +5,10 @@ import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration
 import com.github.javaparser.ast.body.MethodDeclaration
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
 import parsers.Lang
 
 interface ClassMeta {
@@ -26,8 +29,15 @@ class JavaClassMeta(private val testFile: CompilationUnit, private val testClass
     override val methods: Iterable<MethodMeta>
         get() = testClass.findAll(MethodDeclaration::class.java).map { JavaMethodMeta(it) }
 
-    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean =
-        JavaClassUsageResolver.isSourceClassUsed(testFile, testClass, sourceClassAndLocation.sourceClass)
+    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean {
+        val sourceClass = sourceClassAndLocation.sourceClass
+        val fqcn = sourceClass.fqcn
+        val expectPackageNameOnUsage = packageName != sourceClass.pkg && testFile.hasImport(fqcn, sourceClass.pkg)
+        return testClass.stream()
+            .filter { it.hasClassUsage(sourceClass, expectPackageNameOnUsage) }
+            .findAny()
+            .isPresent
+    }
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotations, name)
 
@@ -43,8 +53,16 @@ class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
     override val methods: Iterable<MethodMeta>
         get() = testClass.declarations.mapNotNull { (it as? KtNamedFunction)?.let { KotlinMethodMeta(it)} }
 
-    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean =
-        KotlinClassUsageResolver.isSourceClassUsed(testClass.containingKtFile, testClass, sourceClassAndLocation.sourceClass)
+    override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean {
+        val sourceClass = sourceClassAndLocation.sourceClass
+        val fqcn = sourceClass.fqcn
+        val ktFile = testClass.containingKtFile
+        val expectPackageNameOnUsage = packageName != sourceClass.pkg && ktFile.hasImport(fqcn, sourceClass.pkg)
+        return testClass.findDescendantOfType<KtNameReferenceExpression> {
+            it.name == sourceClass.name && (!expectPackageNameOnUsage ||
+                    it.parent is KtDotQualifiedExpression && it.parent.text.startsWith(fqcn))
+        } != null
+    }
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(testClass.annotationEntries, name)
 
