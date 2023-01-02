@@ -3,88 +3,39 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.TextProgressMonitor
 import parsers.Lang
 import parsers.ParserRunner
-import writers.CsvResultWriter
-import writers.DBResultWriter
-import writers.JsonResultWriter
-import writers.OutputType
 import java.io.File
 import java.io.Writer
-import java.util.concurrent.*
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.Callable
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 
 private val logger = KotlinLogging.logger {}
 
-class Runner(
-    private val projectsPath: File,
-    outputFormat: OutputType,
-    outputPath: File,
+class ProjectScanner private constructor(
     private val repoStorage: File,
-    ioThreads: Int,
-    cpuThreads: Int
+    private val taskExecutor: TaskExecutor
 ) {
-    private val outputFile = if (outputPath.isDirectory) {
-        File(outputPath, "results.${outputFormat.value}")
-    } else {
-        outputPath
-    }
+    constructor(repoStorage: File, ioThreads: Int, cpuThreads: Int)
+            : this(repoStorage, TaskExecutor(ioThreads, cpuThreads))
 
-    private val resultWriter = when (outputFormat) {
-        OutputType.JSON -> JsonResultWriter(outputFile.toPath())
-        OutputType.CSV -> CsvResultWriter(outputFile.toPath())
-        OutputType.SQLITE -> DBResultWriter("jdbc:sqlite:$outputFile")
-    }
-
-    private val taskExecutor = TaskExecutor(ioThreads, cpuThreads)
-
-    fun run() {
-        logger.info { "Start processing projects in ${projectsPath.path}..." }
-
-        val tasks = LinkedBlockingQueue<Future<List<TestMethodInfo>>>()
-        var projectCount = 0
-
-        projectsPath.forEachLine { path ->
-            if (path.startsWith("http")) {
-                ++projectCount
-                taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
-                    .handle { repoPath, ex ->
-                        tasks += if (ex != null) CompletableFuture.failedFuture(ex)
-                        else taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
-                    }
-            } else if (path.isNotBlank()) {
-                ++projectCount
-                tasks += taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
-            }
-        }
-
-        repeat(projectCount) {
-            getFutureValue(tasks.take())?.let { writeTestMethodInfos(it, resultWriter) }
-        }
-
-        resultWriter.close()
-        logger.info { "Finished processing projects." }
-    }
-
-    private fun getFutureValue(future: Future<List<TestMethodInfo>>): List<TestMethodInfo>? = try {
-        future.get()
-    } catch (e: ExecutionException) {
-        null
-    }
-
-
-    private fun writeTestMethodInfos(testMethodInfos: List<TestMethodInfo>, resultWriter: ResultWriter) {
-        if (testMethodInfos.isNotEmpty()) {
-            synchronized(resultWriter) {
-                val projectName = testMethodInfos[0].classInfo.projectInfo.name
-                namedThread("${projectName}.resultWriter") {
-                    resultWriter.writeTestMethods(testMethodInfos)
+    fun scanProject(path: String, tasks: BlockingQueue<Future<List<TestMethodInfo>>>): Boolean {
+        if (path.startsWith("http")) {
+            taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
+                .handle { repoPath, ex ->
+                    tasks += if (ex != null) CompletableFuture.failedFuture(ex)
+                    else taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
                 }
-            }
+        } else if (path.isNotBlank()) {
+            tasks += taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
         }
+        return path.isNotBlank()
     }
 
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
         override fun call(): File {
             val projectName = url.substringAfterLast('/').removeSuffix(".git")
-            
+
             return namedThread("${projectName}.downloader") {
                 val destination = File(targetDir, projectName)
                 if (destination.isDirectory) {
