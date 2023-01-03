@@ -5,7 +5,8 @@ private val logger = KotlinLogging.logger {}
 
 enum class BuildSystem {
     GRADLE {
-        private val moduleNameRegex = "include[(\\s]+['\"]([^']+?)['\"]".toRegex()
+        private val moduleImportsRegex = "include\\s*[(]?((?:\\s*['\"][^'\"]+['\"]\\s*,?)+)".toRegex()
+        private val extractModuleNamesRegex = "(?<=')[^',\\s]+|(?<=\")[^\",\\s]+".toRegex()
 
         private fun findConfigFile(projectPath: File, name:String) =
             File(projectPath, "$name.gradle").takeIf { it.isFile }
@@ -13,7 +14,9 @@ enum class BuildSystem {
 
         override fun getProjectModules(projectPath: File): Map<String, File> =
             findConfigFile(projectPath, "settings")?.let { settings ->
-                extractModuleNames(projectPath, settings, moduleNameRegex, 1)
+                extractModuleNames(projectPath, settings, moduleImportsRegex) { matchResult ->
+                    extractModuleNamesRegex.findAll(matchResult.groupValues[1]).map { it.value }
+                }
             } ?: super.getProjectModules(projectPath)
 
         override fun supportsTestDirFiltering(path: File): Boolean =
@@ -25,7 +28,7 @@ enum class BuildSystem {
 
         override fun getProjectModules(projectPath: File): Map<String, File> {
             val pomFile = File(projectPath, "pom.xml")
-            return extractModuleNames(projectPath, pomFile, moduleNameRegex, 0)
+            return extractModuleNames(projectPath, pomFile, moduleNameRegex) { sequenceOf(it.value) }
                 ?: super.getProjectModules(projectPath)
         }
     },
@@ -42,10 +45,10 @@ private fun extractModuleNames(
     projectPath: File,
     settingsFile: File,
     regex: Regex,
-    expectedGroup: Int
+    extractor: (MatchResult) -> Sequence<String>
 ): Map<String, File>? =
     regex.findAll(settingsFile.readText())
-        .map { it.groups[expectedGroup]?.value ?: "" }
+        .flatMap(extractor)
         .map { it to File(projectPath, it.replace(':', '/')) }
         .toMap()
         .takeIf { it.isNotEmpty() }
