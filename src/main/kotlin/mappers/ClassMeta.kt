@@ -32,7 +32,7 @@ class JavaClassMeta(private val testFile: CompilationUnit, private val testClass
     override fun hasClassUsage(sourceClassAndLocation: SourceClassAndLocation): Boolean {
         val sourceClass = sourceClassAndLocation.sourceClass
         val fqcn = sourceClass.fqcn
-        val expectPackageNameOnUsage = packageName != sourceClass.pkg && testFile.hasImport(fqcn, sourceClass.pkg)
+        val expectPackageNameOnUsage = packageName != sourceClass.pkg && !testFile.hasImport(fqcn, sourceClass.pkg)
         return testClass.stream()
             .filter { it.hasClassUsage(sourceClass, expectPackageNameOnUsage) }
             .findAny()
@@ -57,9 +57,9 @@ class KotlinClassMeta(private val testClass: KtClass) : ClassMeta {
         val sourceClass = sourceClassAndLocation.sourceClass
         val fqcn = sourceClass.fqcn
         val ktFile = testClass.containingKtFile
-        val expectPackageNameOnUsage = packageName != sourceClass.pkg && ktFile.hasImport(fqcn, sourceClass.pkg)
+        val expectPackageNameOnUsage = packageName != sourceClass.pkg && !ktFile.hasImport(fqcn, sourceClass.pkg)
         return testClass.findDescendantOfType<KtNameReferenceExpression> {
-            it.name == sourceClass.name && (!expectPackageNameOnUsage ||
+            it.textMatches(sourceClass.name) && (!expectPackageNameOnUsage ||
                     it.parent is KtDotQualifiedExpression && it.parent.text.startsWith(fqcn))
         } != null
     }
