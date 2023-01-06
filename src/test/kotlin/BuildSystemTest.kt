@@ -6,7 +6,8 @@ import java.io.File
 
 class BuildSystemTest {
     @Test
-    fun testDetectGradleModules(@TempDir projectPath: File) {
+    fun testDetectGradleModules(@TempDir tempDir: File) {
+        val projectPath = File(tempDir, "test").also { it.mkdir() }
         val settings = """
             rootProject.name = "prj-root"
 
@@ -21,13 +22,13 @@ class BuildSystemTest {
         File(projectPath, "settings.gradle").writeText(settings)
         val resolvedModules = BuildSystem.GRADLE.getProjectModules(projectPath)
         val expectedModules = mapOf(
-            "projectj" to File(projectPath, "project/projectj"),
-            "core" to File(projectPath, "project/core"),
-            "server" to File(projectPath, "project/server"),
-            "prj1" to File(projectPath, "project/prj1"),
-            "prj2" to File(projectPath, "project/prj2"),
-            "prj3" to File(projectPath, "project/prj3"),
-            "prj4" to File(projectPath, "project/prj4"),
+            "test/project/projectj" to File(projectPath, "project/projectj"),
+            "test/project/core" to File(projectPath, "project/core"),
+            "test/project/server" to File(projectPath, "project/server"),
+            "test/project/prj1" to File(projectPath, "project/prj1"),
+            "test/project/prj2" to File(projectPath, "project/prj2"),
+            "test/project/prj3" to File(projectPath, "project/prj3"),
+            "test/project/prj4" to File(projectPath, "project/prj4"),
         )
         assertThat(resolvedModules).containsExactlyEntriesOf(expectedModules)
     }
@@ -57,19 +58,21 @@ class BuildSystemTest {
     }
 
     @Test
-    fun testDetectMavenModules(@TempDir projectPath: File) {
+    fun testDetectMavenModules(@TempDir tempDir: File) {
+        val projectPath = File(tempDir, "test-parent").also { it.mkdir() }
         val pomXml = createPom("test-parent", listOf("android", "maven-plugin"))
         File(projectPath, "pom.xml").writeText(pomXml)
         val resolvedModules = BuildSystem.MAVEN.getProjectModules(projectPath)
         val expectedModules = mapOf(
-            "android" to File(projectPath, "android"),
-            "maven-plugin" to File(projectPath, "maven-plugin"),
+            "test-parent/android" to File(projectPath, "android"),
+            "test-parent/maven-plugin" to File(projectPath, "maven-plugin"),
         )
         assertThat(resolvedModules).containsExactlyEntriesOf(expectedModules)
     }
 
     @Test
-    fun testDetectMavenModulesWithSeveralParents(@TempDir projectPath: File) {
+    fun testDetectMavenModulesWithSeveralParents(@TempDir tempDir: File) {
+        val projectPath = File(tempDir, "grandparent").also { it.mkdir() }
         val grandParentPom = createPom("grandparent", listOf("parent", "shared"))
         val parentPom = createPom("parent", listOf("child1", "child2"))
         File(projectPath, "pom.xml").writeText(grandParentPom)
@@ -79,9 +82,9 @@ class BuildSystemTest {
         }
         val resolvedModules = BuildSystem.MAVEN.getProjectModules(projectPath)
         val expectedModules = mapOf(
-            "child1" to File(File(projectPath, "parent"), "child1"),
-            "child2" to File(File(projectPath, "parent"), "child2"),
-            "shared" to File(projectPath, "shared"),
+            "grandparent/parent/child1" to File(File(projectPath, "parent"), "child1"),
+            "grandparent/parent/child2" to File(File(projectPath, "parent"), "child2"),
+            "grandparent/shared" to File(projectPath, "shared"),
         )
         assertThat(resolvedModules).containsExactlyEntriesOf(expectedModules)
     }

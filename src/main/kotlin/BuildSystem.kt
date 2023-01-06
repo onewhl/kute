@@ -12,16 +12,16 @@ enum class BuildSystem {
             File(projectPath, "$name.gradle").takeIf { it.isFile }
                 ?: File(projectPath, "$name.gradle.kts").takeIf { it.isFile }
 
-        override fun getProjectModules(projectPath: File): Map<String, File> =
+        override fun getProjectModules(projectPath: File, baseModule: String): Map<String, File> =
             findConfigFile(projectPath, "settings")?.let { settings ->
                 extractModuleNames(projectPath, settings, moduleImportsRegex) { matchResult ->
                     extractModuleNamesRegex.findAll(matchResult.groupValues[1])
                         // In Gradle, colon is used as path separator, so normalize project name to match FS path
                         .map { it.value.removePrefix(":").replace(':', File.separatorChar)
-                            .let { projectName -> getProjectModules(File(projectPath, projectName)) }
+                            .let { module -> getProjectModules(File(projectPath, module), "$baseModule/$module") }
                         }.fold(LinkedHashMap()) { acc, map -> acc.apply { putAll(map) }}
                 }
-            } ?: super.getProjectModules(projectPath)
+            } ?: super.getProjectModules(projectPath, baseModule)
 
         override fun supportsTestDirFiltering(path: File): Boolean =
             findConfigFile(path, "build")?.let { !it.readText().contains("sourceSets") }
@@ -30,20 +30,20 @@ enum class BuildSystem {
     MAVEN {
         private val moduleNameRegex = "(?<=<module>)[^<]*(?=</module>)".toRegex()
 
-        override fun getProjectModules(projectPath: File): Map<String, File> {
+        override fun getProjectModules(projectPath: File, baseModule: String): Map<String, File> {
             return File(projectPath, "pom.xml").takeIf { it.isFile }?.let { pomFile ->
                 extractModuleNames(projectPath, pomFile, moduleNameRegex) {
-                    getProjectModules(File(projectPath, it.value))
+                    getProjectModules(File(projectPath, it.value), "$baseModule/${it.value}")
                 }
-            } ?: super.getProjectModules(projectPath)
+            } ?: super.getProjectModules(projectPath, baseModule)
         }
     },
     ANT, OTHER;
 
     open fun supportsTestDirFiltering(path: File) = this == MAVEN
 
-    open fun getProjectModules(projectPath: File): Map<String, File> =
-        mapOf(projectPath.name to projectPath)
+    open fun getProjectModules(projectPath: File, baseModule: String = projectPath.name): Map<String, File> =
+        mapOf(baseModule to projectPath)
             .also { logger.debug { "Found ${it.size} modules in project $projectPath." } }
 }
 
