@@ -7,8 +7,7 @@
 
 It automatically downloads projects from GitHub, parses source code to identify unit tests, searches for the
 corresponding source methods, collects some metadata about the code, and stores the information in one of the following
-formats: ```JSON```, ```CSV```
-, ```SQLite```.
+formats: ```JSON```, ```CSV```, ```SQLite```.
 
 ## Getting started
 
@@ -29,11 +28,11 @@ To start processing the projects, run the command
 
 ```kute``` is a command-line application that could be run with the following options:
 
-| Name                  | Description                                                                         | 
-|-----------------------|-------------------------------------------------------------------------------------|
-| ```--projects```      | Path to the file with links to projects on GitHub.                                  |
-| ```--output-format``` | Format to store results in. Supported types: ```json```, ```csv```, ```sqlite```.   |
-| ```--output-path```   | Path to put file with results to.                                                   |
-| ```--repo-storage```   | Path to the directory to clone repositories to.                                     |
-| ```--io-threads```    | Number of threads used for downloading Git repos. Use 0 for common pool. Default: 1 |
-| ```--cpu-threads```   | Number of threads used for processing projects. Use 0 for common pool. Default: 0   |
+| Name                   | Description                                                                                                | 
+|------------------------|------------------------------------------------------------------------------------------------------------|
+| ```--projects```       | Path to the file with links to projects on GitHub.                                                         |
+| ```--output-formats``` | Comma-separated list of formats to store results in. Supported types: ```json```, ```csv```, ```sqlite```. |
+| ```--output-path```    | Path to put file with results to.                                                                          |
+| ```--repo-storage```   | Path to the directory to clone repositories to.                                                            |
+| ```--io-threads```     | Number of threads used for downloading Git repos. Use 0 for common pool. Default: 1                        |
+| ```--cpu-threads```    | Number of threads used for processing projects. Use 0 for common pool. Default: 0                          |
