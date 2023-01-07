@@ -1,3 +1,4 @@
+import writers.CompositeResultWriter
 import writers.CsvResultWriter
 import writers.DBResultWriter
 import writers.JsonResultWriter
@@ -26,6 +27,15 @@ interface ResultWriter : Closeable {
     }
 
     companion object {
+        fun create(outputFormats: Set<OutputType>, outputPath: File): ResultWriter {
+            check(outputFormats.isNotEmpty()) { "outputFormats must be specified" }
+            if (outputFormats.size == 1) {
+                return create(outputFormats.first(), outputPath)
+            }
+            check(outputPath.isDirectory) { "outputPath must be a directory if multiple output formats specified" }
+            return CompositeResultWriter(outputFormats.map { create(it, outputPath) }.toTypedArray())
+        }
+
         fun create(outputFormat: OutputType, outputPath: File): ResultWriter {
             val outputFile = if (outputPath.isDirectory) {
                 File(outputPath, "results.${outputFormat.value}")
