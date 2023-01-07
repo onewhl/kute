@@ -23,8 +23,11 @@ class ProjectScanner private constructor(
         if (path.startsWith("http")) {
             taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
                 .handle { repoPath, ex ->
-                    tasks += if (ex != null) CompletableFuture.failedFuture(ex)
-                    else taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                    tasks += if (ex != null) {
+                        CompletableFuture.failedFuture(ex)
+                    } else {
+                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                    }
                 }
         } else if (path.isNotBlank()) {
             tasks += taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
