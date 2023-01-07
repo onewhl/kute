@@ -190,7 +190,7 @@ class TestMethodExtractionTests {
         val moduleInfo = createModule(pathToModule)
         val parser = createParser(lang, pathToModule, moduleInfo, emptyMap())
         val testFile = File(pathToModule, "src/test/${lang.name.lowercase()}/project/${className}.${lang.extension}")
-        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, null, lang, framework)
+        val classInfo = TestClassInfo(className, "project", moduleInfo.projectInfo, moduleInfo, lang, framework, null)
 
         assertThat(parser.process(listOf(testFile))).usingRecursiveComparison()
             .isEqualTo(expectedResultProvider(classInfo))

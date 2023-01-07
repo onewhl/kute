@@ -23,9 +23,9 @@ data class TestClassInfo(
     @SerialName("package") val packageName: String,
     val projectInfo: ProjectInfo,
     val moduleInfo: ModuleInfo,
-    val sourceClass: SourceClassInfo?,
     val language: Lang,
-    val testFramework: TestFramework
+    val testFramework: TestFramework,
+    val sourceClass: SourceClassInfo?
 )
 
 @Serializable

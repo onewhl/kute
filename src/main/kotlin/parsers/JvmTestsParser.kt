@@ -83,9 +83,9 @@ class JvmTestsParser(
             classMeta.packageName,
             module.projectInfo,
             module,
-            sourceClassAndLocation?.sourceClass,
             language,
-            testFramework
+            testFramework,
+            sourceClassAndLocation?.sourceClass
         )
         val isClassParameterized = isClassParameterized(classMeta, testFramework)
         val isClassDisabled = isClassDisabled(classMeta, testFramework)
