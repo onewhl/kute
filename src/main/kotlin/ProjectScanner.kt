@@ -14,10 +14,11 @@ private val logger = KotlinLogging.logger {}
 
 class ProjectScanner private constructor(
     private val repoStorage: File,
-    private val taskExecutor: TaskExecutor
+    private val taskExecutor: TaskExecutor,
+    private val cleanupClonedRepos: Boolean
 ) {
-    constructor(repoStorage: File, ioThreads: Int, cpuThreads: Int)
-            : this(repoStorage, TaskExecutor(ioThreads, cpuThreads))
+    constructor(repoStorage: File, ioThreads: Int, cpuThreads: Int, cleanupClonedRepos: Boolean)
+            : this(repoStorage, TaskExecutor(ioThreads, cpuThreads), cleanupClonedRepos)
 
     fun scanProject(path: String, tasks: BlockingQueue<Future<List<TestMethodInfo>>>): Boolean {
         if (path.startsWith("http")) {
@@ -26,13 +27,18 @@ class ProjectScanner private constructor(
                     tasks += if (ex != null) {
                         CompletableFuture.failedFuture(ex)
                     } else {
-                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath))
+                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath, cleanupClonedRepos))
                     }
                 }
-        } else if (path.isNotBlank()) {
-            tasks += taskExecutor.runComputationTask(ProjectProcessingTask(File(path)))
+            return true
         }
-        return path.isNotBlank()
+        if (path.isNotBlank()) {
+            File(path).takeIf { it.isDirectory }?.let { directory ->
+                tasks += taskExecutor.runComputationTask(ProjectProcessingTask(directory, deleteAfterProcessing = false))
+                return true
+            }
+        }
+        return false
     }
 
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
@@ -77,7 +83,8 @@ class ProjectScanner private constructor(
     }
 
     private class ProjectProcessingTask(
-        private val path: File
+        private val path: File,
+        private val deleteAfterProcessing: Boolean
     ) : Callable<List<TestMethodInfo>> {
         override fun call(): List<TestMethodInfo> {
             val projectName = path.name
@@ -91,6 +98,13 @@ class ProjectScanner private constructor(
                 } catch (e: Throwable) {
                     logger.error(e) { e.message }
                     throw e
+                } finally {
+                    if (deleteAfterProcessing) {
+                        logger.info { "Deleting $path" }
+                        if (!path.deleteRecursively()) {
+                            logger.warn("$path not fully deleted")
+                        }
+                    }
                 }
             }
         }

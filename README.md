@@ -36,3 +36,5 @@ To start processing the projects, run the command
 | ```--repo-storage```   | Path to the directory to clone repositories to.                                                            |
 | ```--io-threads```     | Number of threads used for downloading Git repos. Use 0 for common pool. Default: 1                        |
 | ```--cpu-threads```    | Number of threads used for processing projects. Use 0 for common pool. Default: 0                          |
+| ```--cleanup```        | Delete cloned Git repositories after processing. Default: disabled                                         |
+

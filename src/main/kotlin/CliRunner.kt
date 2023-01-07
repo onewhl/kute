@@ -1,5 +1,6 @@
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.split
@@ -27,11 +28,12 @@ class CliRunner: CliktCommand() {
         .default(1)
     private val cpuThreads by option(help = "Number of threads used for processing projects. Use 0 for common pool").int()
         .default(0)
+    private val cleanup by option(help = "Delete cloned Git repos after processing").flag(default = false)
 
     override fun run() = ResultWriter.create(outputFormats, outputPath).use { resultWriter ->
         logger.info { "Start processing projects in ${projects.path}..." }
 
-        val scanner = ProjectScanner(repoStorage, ioThreads, cpuThreads)
+        val scanner = ProjectScanner(repoStorage, ioThreads, cpuThreads, cleanup)
         val tasks = LinkedBlockingQueue<Future<List<TestMethodInfo>>>()
         val projectCount = projects.bufferedReader().useLines { it.count { path -> scanner.scanProject(path, tasks) } }
 
