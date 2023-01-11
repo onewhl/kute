@@ -51,19 +51,8 @@ class ProjectScanner private constructor(
         return false
     }
 
-    private data class Project(val author: String, val name: String) {
-        constructor(name: String): this("", name)
-        val fullName = if (author.isNotEmpty()) "$author/$name" else name
-    }
-
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
-        val project = url.let {
-            val indexOfName = url.lastIndexOf('/')
-            val indexOfAuthor = url.lastIndexOf('/', indexOfName - 1)
-            val author = url.substring(indexOfAuthor + 1, indexOfName)
-            val name = url.substring(indexOfName + 1).removeSuffix(".git")
-            Project(author, name)
-        }
+        val project = Project.fromPath(url)
 
         override fun call(): File {
             return namedThread("${project.fullName}.downloader") {

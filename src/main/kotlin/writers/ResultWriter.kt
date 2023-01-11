@@ -18,7 +18,7 @@ interface ResultWriter : Closeable {
     fun writeSynchronized(testMethodInfos: List<TestMethodInfo>) {
         if (testMethodInfos.isNotEmpty()) {
             synchronized(this) {
-                val projectName = testMethodInfos[0].classInfo.projectInfo.name
+                val projectName = Project.fromPath(testMethodInfos[0].classInfo.projectInfo.path).fullName
                 namedThread("${projectName}.resultWriter") {
                     writeTestMethods(testMethodInfos)
                 }
