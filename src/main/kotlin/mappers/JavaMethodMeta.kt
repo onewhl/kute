@@ -36,10 +36,10 @@ data class JavaMethodMeta(val method: MethodDeclaration) : MethodMeta {
 
     private fun LineComment.line(): Int = this.range.orElse(null)?.end?.line ?: -1
 
-    override fun hasMethodCall(sourceMethod: MethodMeta): Boolean {
-        val methodCallVisitor = MethodCallVisitor(sourceMethod)
+    override fun findLastMethodCall(sourceMethods: Map<String, List<MethodMeta>>): MethodMeta? {
+        val methodCallVisitor = SourceMethodFinder(sourceMethods)
         method.accept(methodCallVisitor, null)
-        return methodCallVisitor.result
+        return methodCallVisitor.lastMatchedMethod
     }
 
     override fun hasAnnotation(name: String): Boolean =
@@ -61,6 +61,23 @@ data class JavaMethodMeta(val method: MethodDeclaration) : MethodMeta {
             if (nameAsString == sourceMethod.name && sourceMethod.parameters.size == methodCall.arguments.size) {
                 result = true
             }
+            super.visit(methodCall, arg)
+        }
+    }
+
+    private class SourceMethodFinder(
+        private val sourceMethods: Map<String, List<MethodMeta>>
+    ) : VoidVisitorAdapter<Void?>() {
+        var lastMatchedMethod: MethodMeta? = null
+
+        private fun isAnyMethod(name: String, args: List<*>) =
+            args.isEmpty() && (name == "equals" || name == "hashCode" || name == "toString")
+
+        override fun visit(methodCall: MethodCallExpr, arg: Void?) {
+            val nameAsString = methodCall.nameAsString
+            sourceMethods[nameAsString]?.find { it.parameters.size == methodCall.arguments.size }
+                ?.takeIf { !isAnyMethod(nameAsString, methodCall.arguments) }
+                ?.also { lastMatchedMethod = it }
             super.visit(methodCall, arg)
         }
     }
