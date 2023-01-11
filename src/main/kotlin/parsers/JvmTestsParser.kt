@@ -17,7 +17,7 @@ private val logger = KotlinLogging.logger {}
 class JvmTestsParser(
     private val path: File,
     private val module: ModuleInfo,
-    classNameToFile: Map<String, List<File>>,
+    classNameToFile: Map<String, List<Pair<File, ModuleInfo>>>,
     private val language: Lang
 ) : Parser {
     private val classMapper = ClassMapper(module, classNameToFile)
