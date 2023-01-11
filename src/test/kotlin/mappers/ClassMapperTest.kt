@@ -16,7 +16,7 @@ class ClassMapperTest {
     @Test
     fun `test that single source with corresponding name and package is located`() {
         val entityJava = File("src/io/test/Entity.java")
-        val classNameToSources = mapOf("Entity" to listOf(entityJava))
+        val classNameToSources = mapOf("Entity" to listOf(Pair(entityJava, module)))
         val mapper = ClassMapper(module, classNameToSources) { "io.test" }
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { true }
         val expectedSourceClassAndLocation = SourceClassAndLocation(
@@ -32,7 +32,7 @@ class ClassMapperTest {
     @Test
     fun `test that same-package discriminator works if multiple same-name classes exist in different packages and all used in test`() {
         val classNameToSources = mapOf("Entity" to listOf("", "dto", "model")
-            .map { File("src/io/test/$it/Entity.java") }
+            .map { Pair(File("src/io/test/$it/Entity.java"), module) }
         )
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { true }
@@ -50,7 +50,7 @@ class ClassMapperTest {
     fun `test that only class used inside test can be chosen as source class even if class with same name in same package exists`() {
         val expectedFile = File("src/io/test/model/Entity.java")
         val classNameToSources = mapOf("Entity" to listOf("", "dto", "model")
-            .map { File("src/io/test/$it/Entity.java") }
+            .map { Pair(File("src/io/test/$it/Entity.java"), module) }
         )
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("EntityTest", "io.test", Lang.JAVA) { it.file == expectedFile }
@@ -67,7 +67,7 @@ class ClassMapperTest {
     @Test
     fun `test that a class containing a token from test class name can be chosen as source class`() {
         val expectedFile = File("src/io/test/model/Entity.java")
-        val classNameToSources = mapOf("Entity" to listOf(expectedFile))
+        val classNameToSources = mapOf("Entity" to listOf(Pair(expectedFile, module)))
         val mapper = ClassMapper(module, classNameToSources, PathBasedPackageResolver("src/"))
         val testClass = TestClassMeta("SerializingEntityAsJsonTest", "io.test", Lang.JAVA) { it.file == expectedFile }
         val expectedSourceClassAndLocation = SourceClassAndLocation(

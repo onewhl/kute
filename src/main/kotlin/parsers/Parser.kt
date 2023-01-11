@@ -8,5 +8,5 @@ interface Parser {
     fun process(files: List<File>): List<TestMethodInfo>
 }
 
-fun createParser(lang: Lang, path: File, module: ModuleInfo, classNameToFile: Map<String, List<File>>) =
+fun createParser(lang: Lang, path: File, module: ModuleInfo, classNameToFile: Map<String, List<Pair<File, ModuleInfo>>>) =
     JvmTestsParser(path, module, classNameToFile, lang)

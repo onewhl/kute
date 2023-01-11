@@ -22,7 +22,7 @@ import java.util.*
  */
 class ClassMapper(
     private val module: ModuleInfo,
-    private val classNameToSourcesMap: Map<String, List<File>>,
+    private val classNameToSourcesMap: Map<String, List<Pair<File, ModuleInfo>>>,
     private val packageNameResolver: PackageNameResolver = RegexPackageNameResolver
 ) {
     fun findSourceClass(testClassMeta: ClassMeta): SourceClassAndLocation? {
@@ -65,15 +65,20 @@ class ClassMapper(
         }
     }
 
-    private fun createSourceClassInfo(className: String, file: File, testClassMeta: ClassMeta): SourceClassAndLocation {
+    private fun createSourceClassInfo(className: String, fileAndModule: Pair<File, ModuleInfo>, testClassMeta: ClassMeta): SourceClassAndLocation =
+        createSourceClassInfo(className, fileAndModule.first, fileAndModule.second, testClassMeta)
+
+
+    private fun createSourceClassInfo(className: String, file: File, module: ModuleInfo, testClassMeta: ClassMeta): SourceClassAndLocation {
         val packageName = if (isSourceClassPackageNameSameAsTest(file, testClassMeta)) {
             testClassMeta.packageName
         } else {
             packageNameResolver.extractPackageName(file)
         }
-        return SourceClassAndLocation(SourceClassInfo(
-            className, packageName, module, detectLangByExtension(file.extension)
-        ), file)
+        return SourceClassAndLocation(
+            SourceClassInfo(className, packageName, module, detectLangByExtension(file.extension)),
+            file
+        )
     }
 
     companion object {
