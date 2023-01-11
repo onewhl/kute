@@ -11,7 +11,7 @@ import parsers.Lang
 import java.io.File
 
 class ClassMapperTest {
-    private val module = ModuleInfo("test", ProjectInfo("test", BuildSystem.OTHER))
+    private val module = ModuleInfo("test", ProjectInfo("test", BuildSystem.OTHER, "/tmp/test"))
 
     @Test
     fun `test that single source with corresponding name and package is located`() {

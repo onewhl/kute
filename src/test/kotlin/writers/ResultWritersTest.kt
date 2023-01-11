@@ -21,7 +21,7 @@ import kotlin.io.path.readText
 
 class ResultWritersTest {
     private fun provideTestMethods(): List<TestMethodInfo> {
-        val projectInfo = ProjectInfo("My Project", BuildSystem.MAVEN)
+        val projectInfo = ProjectInfo("My Project", BuildSystem.MAVEN, "/tmp/project")
         val moduleInfo = ModuleInfo("main", projectInfo)
         val sourceClass = SourceClassInfo("Simple", "com.test", moduleInfo, Lang.JAVA)
         val testClassInfo =
@@ -66,11 +66,11 @@ class ResultWritersTest {
                 writer.writeTestMethods(provideTestMethods())
             }
             val expectedContent = """
-                name,body,comment,displayName,isParametrised,isDisabled,classInfo.name,classInfo.package,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.language,classInfo.testFramework,classInfo.sourceClass.name,classInfo.sourceClass.package,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.language,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.package,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.language
-                test,assertTrue(true);,,Simple Test Method,false,false,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,JAVA,JUNIT4,Simple,com.test,main,My Project,MAVEN,JAVA,run,,Simple,com.test,main,My Project,MAVEN,JAVA
-                testNoSourceMethod,"assertEquals(""true"", value);",,Simple Test Method 2,true,true,SimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,JAVA,JUNIT4,Simple,com.test,main,My Project,MAVEN,JAVA,,,,,,,,
-                testNoSourceClass,"assertEquals(""true"", value);",,,false,false,NoSourceSimpleTest,com.test,My Project,MAVEN,main,My Project,MAVEN,JAVA,JUNIT4,,,,,,,,,,,,,,
-            """.trimIndent()
+                name,body,comment,displayName,isParametrised,isDisabled,classInfo.name,classInfo.package,classInfo.projectInfo.name,classInfo.projectInfo.buildSystem,classInfo.projectInfo.path,classInfo.moduleInfo.name,classInfo.moduleInfo.projectInfo.name,classInfo.moduleInfo.projectInfo.buildSystem,classInfo.moduleInfo.projectInfo.path,classInfo.language,classInfo.testFramework,classInfo.sourceClass.name,classInfo.sourceClass.package,classInfo.sourceClass.moduleInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.name,classInfo.sourceClass.moduleInfo.projectInfo.buildSystem,classInfo.sourceClass.moduleInfo.projectInfo.path,classInfo.sourceClass.language,sourceMethod.name,sourceMethod.body,sourceMethod.sourceClass.name,sourceMethod.sourceClass.package,sourceMethod.sourceClass.moduleInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.name,sourceMethod.sourceClass.moduleInfo.projectInfo.buildSystem,sourceMethod.sourceClass.moduleInfo.projectInfo.path,sourceMethod.sourceClass.language
+                test,assertTrue(true);,,Simple Test Method,false,false,SimpleTest,com.test,My Project,MAVEN,/tmp/project,main,My Project,MAVEN,/tmp/project,JAVA,JUNIT4,Simple,com.test,main,My Project,MAVEN,/tmp/project,JAVA,run,,Simple,com.test,main,My Project,MAVEN,/tmp/project,JAVA
+                testNoSourceMethod,"assertEquals(""true"", value);",,Simple Test Method 2,true,true,SimpleTest,com.test,My Project,MAVEN,/tmp/project,main,My Project,MAVEN,/tmp/project,JAVA,JUNIT4,Simple,com.test,main,My Project,MAVEN,/tmp/project,JAVA,,,,,,,,,
+                testNoSourceClass,"assertEquals(""true"", value);",,,false,false,NoSourceSimpleTest,com.test,My Project,MAVEN,/tmp/project,main,My Project,MAVEN,/tmp/project,JAVA,JUNIT4,,,,,,,,,,,,,,,,
+                """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
         }
     }
@@ -83,9 +83,9 @@ class ResultWritersTest {
             }
             val expectedContent = """
                [
-               {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"isDisabled":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"}},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"}}},
-               {"name":"testNoSourceMethod","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":true,"isDisabled":true,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA"}},"sourceMethod":null},
-               {"name":"testNoSourceClass","body":"assertEquals(\"true\", value);","comment":"","displayName":"","isParametrised":false,"isDisabled":false,"classInfo":{"name":"NoSourceSimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":null},"sourceMethod":null}
+               {"name":"test","body":"assertTrue(true);","comment":"","displayName":"Simple Test Method","isParametrised":false,"isDisabled":false,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA"}},"sourceMethod":{"name":"run","body":"","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA"}}},
+               {"name":"testNoSourceMethod","body":"assertEquals(\"true\", value);","comment":"","displayName":"Simple Test Method 2","isParametrised":true,"isDisabled":true,"classInfo":{"name":"SimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":{"name":"Simple","package":"com.test","moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA"}},"sourceMethod":null},
+               {"name":"testNoSourceClass","body":"assertEquals(\"true\", value);","comment":"","displayName":"","isParametrised":false,"isDisabled":false,"classInfo":{"name":"NoSourceSimpleTest","package":"com.test","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"},"moduleInfo":{"name":"main","projectInfo":{"name":"My Project","buildSystem":"MAVEN","path":"/tmp/project"}},"language":"JAVA","testFramework":"JUNIT4","sourceClass":null},"sourceMethod":null}
                ]
             """.trimIndent()
             assertEquals(expectedContent, results.readText().replace("\r\n", "\n"))
@@ -101,7 +101,7 @@ class ResultWritersTest {
         DriverManager.getConnection(connectionString).let { connection ->
             checkDatabaseTableContent(
                 connection, "Projects", listOf(
-                    mapOf("id" to 1, "name" to "My Project", "build_system" to "MAVEN")
+                    mapOf("id" to 1, "name" to "My Project", "build_system" to "MAVEN", "path" to "/tmp/project")
                 )
             )
             checkDatabaseTableContent(
