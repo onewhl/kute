@@ -2,7 +2,7 @@ import mu.KotlinLogging
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.TextProgressMonitor
 import parsers.Lang
-import parsers.ParserRunner
+import parsers.createParser
 import java.io.File
 import java.io.Writer
 import java.util.concurrent.BlockingQueue
@@ -17,6 +17,7 @@ class ProjectScanner private constructor(
     private val taskExecutor: TaskExecutor,
     private val cleanupClonedRepos: Boolean
 ) {
+    private val langs = Lang.values()
     constructor(repoStorage: File, ioThreads: Int, cpuThreads: Int, cleanupClonedRepos: Boolean)
             : this(repoStorage, TaskExecutor(ioThreads, cpuThreads), cleanupClonedRepos)
 
@@ -29,7 +30,7 @@ class ProjectScanner private constructor(
                             CompletableFuture.failedFuture(ex)
                         } else {
                             taskExecutor.runComputationTask(
-                                ProjectProcessingTask(repoPath, downloadingTask.project, path, cleanupClonedRepos)
+                                ProjectProcessingTask(repoPath, downloadingTask.project, path, cleanupClonedRepos, langs)
                             )
                         }
                     }
@@ -40,7 +41,7 @@ class ProjectScanner private constructor(
             when {
                 directory.isDirectory -> {
                     tasks += taskExecutor.runComputationTask(
-                        ProjectProcessingTask(directory, Project(directory.name), path, deleteAfterProcessing = false)
+                        ProjectProcessingTask(directory, Project(directory.name), path, deleteAfterProcessing = false, langs)
                     )
                     return true
                 }
@@ -95,16 +96,28 @@ class ProjectScanner private constructor(
         private val path: File,
         private val project: Project,
         private val originalPath: String,
-        private val deleteAfterProcessing: Boolean
+        private val deleteAfterProcessing: Boolean,
+        private val langs: Array<Lang> = Lang.values()
     ) : Callable<List<TestMethodInfo>> {
         override fun call(): List<TestMethodInfo> {
             return namedThread("${project.fullName}.processor") {
                 try {
                     val buildSystem = detectBuildSystem(path)
                     val projectInfo = ProjectInfo(project.name, buildSystem, originalPath)
-                    buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
-                        ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
+                    val supportedExtensions = langs.map { it.extension }.toSet()
+
+                    val classNameToFileAcrossAllModules = mutableMapOf<String, MutableList<Pair<File, ModuleInfo>>>()
+                    val parsingTasks = buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
+                        val moduleInfo = ModuleInfo(moduleName, projectInfo)
+                        val classFiles: List<File> = extractFiles(modulePath, supportedExtensions)
+                        val classNameToFile = classFiles.groupByTo(
+                            classNameToFileAcrossAllModules,
+                            { it.name.substringBeforeLast('.') },
+                            { Pair(it, moduleInfo) }
+                        )
+                        langs.map { Pair(createParser(it, modulePath, moduleInfo, classNameToFile), classFiles) }
                     }
+                    parsingTasks.flatMap { (parser, classes) -> parser.process(classes) }
                 } catch (e: Throwable) {
                     logger.error(e) { e.message }
                     throw e
@@ -118,6 +131,11 @@ class ProjectScanner private constructor(
                 }
             }
         }
+
+        private fun extractFiles(module: File, extensions: Set<String>): List<File> = module
+            .walkTopDown()
+            .filter { extensions.contains(it.extension) && it.isFile }
+            .toList()
     }
 }
 
