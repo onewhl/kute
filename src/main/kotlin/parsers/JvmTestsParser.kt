@@ -89,7 +89,7 @@ class JvmTestsParser(
         )
         val isClassParameterized = isClassParameterized(classMeta, testFramework)
         val isClassDisabled = isClassDisabled(classMeta, testFramework)
-        var sourceMethodCandidates: List<MethodMeta>? = null
+        var sourceMethodCandidates: Map<String, List<MethodMeta>>? = null
 
         return classMeta.methods
             .mapNotNull { it ->
@@ -98,6 +98,7 @@ class JvmTestsParser(
                         if (sourceMethodCandidates == null) {
                             sourceMethodCandidates = getMetaFactoryByLanguage(detectLangByExtension(it.file.extension))
                                 .parseMethods(it.file)
+                                .groupBy { method -> method.name }
                         }
                         SourceMethodMapper.findSourceMethod(methodMeta, it.sourceClass, sourceMethodCandidates!!)
                     }

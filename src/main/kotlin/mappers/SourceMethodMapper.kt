@@ -7,9 +7,8 @@ object SourceMethodMapper {
     fun findSourceMethod(
         testMethod: MethodMeta,
         sourceClass: SourceClassInfo,
-        candidateMethods: List<MethodMeta>
-    ): SourceMethodInfo? {
-        return candidateMethods.find { testMethod.hasMethodCall(it) }
+        candidateMethods: Map<String, List<MethodMeta>>
+    ): SourceMethodInfo? =
+        testMethod.findLastMethodCall(candidateMethods)
             ?.let { SourceMethodInfo(it.name, it.body, sourceClass) }
-    }
 }
