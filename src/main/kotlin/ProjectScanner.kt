@@ -21,32 +21,53 @@ class ProjectScanner private constructor(
             : this(repoStorage, TaskExecutor(ioThreads, cpuThreads), cleanupClonedRepos)
 
     fun scanProject(path: String, tasks: BlockingQueue<Future<List<TestMethodInfo>>>): Boolean {
-        if (path.startsWith("http")) {
-            taskExecutor.runDownloadingTask(GitRepoDownloadingTask(path, repoStorage))
-                .handle { repoPath, ex ->
-                    tasks += if (ex != null) {
-                        CompletableFuture.failedFuture(ex)
-                    } else {
-                        taskExecutor.runComputationTask(ProjectProcessingTask(repoPath, cleanupClonedRepos))
+        if (path.startsWith("https://")) {
+            GitRepoDownloadingTask(path, repoStorage).takeIf { it.project.name.isNotEmpty() }?.let { downloadingTask ->
+                taskExecutor.runDownloadingTask(downloadingTask)
+                    .handle { repoPath, ex ->
+                        tasks += if (ex != null) {
+                            CompletableFuture.failedFuture(ex)
+                        } else {
+                            taskExecutor.runComputationTask(
+                                ProjectProcessingTask(repoPath, downloadingTask.project, path, cleanupClonedRepos)
+                            )
+                        }
                     }
-                }
-            return true
-        }
-        if (path.isNotBlank()) {
-            File(path).takeIf { it.isDirectory }?.let { directory ->
-                tasks += taskExecutor.runComputationTask(ProjectProcessingTask(directory, deleteAfterProcessing = false))
                 return true
+            } ?: logger.warn { "Could not extract project by URL: $path" }
+        } else if (path.isNotBlank()) {
+            val directory = File(path)
+            when {
+                directory.isDirectory -> {
+                    tasks += taskExecutor.runComputationTask(
+                        ProjectProcessingTask(directory, Project(directory.name), path, deleteAfterProcessing = false)
+                    )
+                    return true
+                }
+                directory.isFile -> logger.warn { "Path to project must be a directory, but file provided: $path" }
+                else -> logger.warn { "Directory doesn't exist: $path" }
             }
         }
         return false
     }
 
-    private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
-        override fun call(): File {
-            val projectName = url.substringAfterLast('/').removeSuffix(".git")
+    private data class Project(val author: String, val name: String) {
+        constructor(name: String): this("", name)
+        val fullName = if (author.isNotEmpty()) "$author/$name" else name
+    }
 
-            return namedThread("${projectName}.downloader") {
-                val destination = File(targetDir, projectName)
+    private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
+        val project = url.let {
+            val indexOfName = url.lastIndexOf('/')
+            val indexOfAuthor = url.lastIndexOf('/', indexOfName - 1)
+            val author = url.substring(indexOfAuthor + 1, indexOfName)
+            val name = url.substring(indexOfName + 1).removeSuffix(".git")
+            Project(author, name)
+        }
+
+        override fun call(): File {
+            return namedThread("${project.fullName}.downloader") {
+                val destination = File(File(targetDir, project.author), project.name)
                 if (destination.isDirectory) {
                     logger.warn("$destination directory already exists and will be cleaned")
                     destination.deleteRecursively()
@@ -54,16 +75,15 @@ class ProjectScanner private constructor(
 
                 logger.info("Cloning Git repository $url to $destination")
 
-                val git = Git.cloneRepository()
+                Git.cloneRepository()
                     .setURI(url)
                     .setDirectory(destination)
                     .setDepth(1)
                     .setProgressMonitor(TextProgressMonitor(LogWriter()))
                     .call()
-                val directory = git.repository.workTree
-                git.close()
+                    .close()
 
-                directory
+                destination
             }
         }
     }
@@ -84,14 +104,15 @@ class ProjectScanner private constructor(
 
     private class ProjectProcessingTask(
         private val path: File,
+        private val project: Project,
+        private val originalPath: String,
         private val deleteAfterProcessing: Boolean
     ) : Callable<List<TestMethodInfo>> {
         override fun call(): List<TestMethodInfo> {
-            val projectName = path.name
-            return namedThread("${projectName}.processor") {
+            return namedThread("${project.fullName}.processor") {
                 try {
                     val buildSystem = detectBuildSystem(path)
-                    val projectInfo = ProjectInfo(projectName, buildSystem)
+                    val projectInfo = ProjectInfo(project.name, buildSystem, originalPath)
                     buildSystem.getProjectModules(path).flatMap { (moduleName, modulePath) ->
                         ParserRunner(Lang.values(), modulePath, ModuleInfo(moduleName, projectInfo)).call()
                     }

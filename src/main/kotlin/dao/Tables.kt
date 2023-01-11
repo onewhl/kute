@@ -60,6 +60,7 @@ object ProjectsTable : Table() {
     val id = integer("id").autoIncrement()
     val name = varchar("name", 256)
     val buildSystem = enumerationByName("build_system", 10, BuildSystem::class)
+    val path = varchar("path", 256)
 
     override val primaryKey = PrimaryKey(id)
 }

@@ -24,6 +24,8 @@ class CsvResultWriter(path: Path) : ResultWriter {
 
     override fun writeTestMethod(method: TestMethodInfo) {
         encoder.encodeSerializableValue(serializer, method)
+        // below is workaround for defect when nullable field results in single empty column
+        // instead of an empty column for each property
         if (method.sourceMethod == null) {
             writer.append(emptySourceMethodPlaceholder)
         }
@@ -38,12 +40,12 @@ class CsvResultWriter(path: Path) : ResultWriter {
     }
 
     companion object {
-        private val numberOfColumnsInModuleInfo = ModuleInfo("", ProjectInfo("", BuildSystem.OTHER))
+        private val numberOfColumnsInModuleInfo = ModuleInfo("", ProjectInfo("", BuildSystem.OTHER, ""))
             .let { Csv.Default.encodeToString(it).split(",").size }
         private val numberOfPropsInSourceClassInfo: Int =
             numberOfProps(SourceClassInfo::class) - 1 + numberOfColumnsInModuleInfo
         private val numberOfPropsInSourceMethodInfo: Int =
-           numberOfProps(SourceMethodInfo::class) - 1 + numberOfPropsInSourceClassInfo
+            numberOfProps(SourceMethodInfo::class) - 1 + numberOfPropsInSourceClassInfo
         private val emptySourceClassPlaceholder = ",".repeat(numberOfPropsInSourceClassInfo - 1)
         private val emptySourceMethodPlaceholder = ",".repeat(numberOfPropsInSourceMethodInfo - 1)
 

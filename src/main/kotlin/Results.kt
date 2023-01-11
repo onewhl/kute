@@ -1,9 +1,7 @@
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import parsers.Lang
 import java.io.File
-import java.lang.IllegalStateException
 
 @Serializable
 data class TestMethodInfo(
@@ -51,7 +49,8 @@ data class SourceClassAndLocation(val sourceClass: SourceClassInfo, val file: Fi
 @Serializable
 data class ProjectInfo(
     val name: String,
-    val buildSystem: BuildSystem
+    val buildSystem: BuildSystem,
+    val path: String
 )
 
 @Serializable

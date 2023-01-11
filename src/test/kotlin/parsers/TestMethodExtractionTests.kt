@@ -197,7 +197,7 @@ class TestMethodExtractionTests {
     }
 
     private fun createModule(path: File) =
-        ModuleInfo(path.nameWithoutExtension, ProjectInfo("test_project", BuildSystem.GRADLE))
+        ModuleInfo(path.nameWithoutExtension, ProjectInfo("test_project", BuildSystem.GRADLE, "/tmp/test_project"))
 
     companion object {
         val frameworkToModule = TestFramework.values().associateWith {

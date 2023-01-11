@@ -68,6 +68,7 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                     ProjectsTable.insert {
                         it[name] = projectInfo.name
                         it[buildSystem] = projectInfo.buildSystem
+                        it[path] = projectInfo.path
                     } get ProjectsTable.id
                 }
 
