@@ -6,7 +6,9 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.allChildren
+import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
+import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
 
 data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
@@ -21,13 +23,22 @@ data class KotlinMethodMeta(val method: KtFunction) : MethodMeta {
         get() = method.bodyExpression?.text ?: ""
     override val isPublic = method.visibilityModifier()?.let { it.text == "public" } ?: true
 
-    override fun hasMethodCall(sourceMethod: MethodMeta): Boolean {
-        val callExpressions = PsiTreeUtil.findChildrenOfType(method.bodyExpression, KtCallExpression::class.java)
-        return callExpressions.any {
-            it.calleeExpression != null &&
-                it.calleeExpression!!.text == sourceMethod.name &&
-                it.valueArguments.size == sourceMethod.parameters.size
+    private fun isAnyMethod(name: String, args: List<*>) =
+        args.isEmpty() && (name == "equals" || name == "hashCode" || name == "toString")
+
+    override fun findLastMethodCall(sourceMethods: Map<String, List<MethodMeta>>): MethodMeta? {
+        var lastMethod: MethodMeta? = null
+        method.bodyExpression?.forEachDescendantOfType<KtCallExpression> {
+            it.calleeExpression?.let { calleeExpression ->
+                val name = calleeExpression.text
+                val args = it.valueArguments
+                sourceMethods[name]
+                    ?.find { sourceMethod -> args.size == sourceMethod.parameters.size }
+                    ?.takeIf { !isAnyMethod(name, args) }
+                    ?.also { matchedMethod -> lastMethod = matchedMethod }
+            }
         }
+        return lastMethod
     }
 
     override fun hasAnnotation(name: String): Boolean = hasAnnotation(method.annotationEntries, name)
