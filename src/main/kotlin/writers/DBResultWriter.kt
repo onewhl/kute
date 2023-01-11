@@ -57,6 +57,9 @@ class DBResultWriter(connectionString: String) : ResultWriter {
 
     private fun writeBatch(batch: List<TestMethodInfo>) {
         transaction {
+            if (batch[0].classInfo.projectInfo != lastRecordedValues.projectInfo.value) {
+                lastRecordedValues.moduleIds.clear()
+            }
             batch.forEach { testMethodInfo ->
                 val classInfo = testMethodInfo.classInfo
                 val sourceClass = classInfo.sourceClass
@@ -72,20 +75,17 @@ class DBResultWriter(connectionString: String) : ResultWriter {
                     } get ProjectsTable.id
                 }
 
-                val moduleId = insertIfNew(moduleInfo, lastRecordedValues::moduleInfo) {
-                    ModulesTable.insert {
-                        it[name] = moduleInfo.name
-                        it[project] = projectId
-                    } get ModulesTable.id
-                }
+                val moduleId = insertModuleIfNew(moduleInfo, projectId)
 
                 val sourceClassId = sourceClass?.let { source ->
+                    val sourceModuleId = insertModuleIfNew(source.moduleInfo, projectId)
+
                     insertIfNew(source, lastRecordedValues::sourceClassInfo) {
                         SourceClassesTable.insert {
                             it[name] = source.name
                             it[pkg] = source.pkg
                             it[language] = source.language
-                            it[module] = moduleId
+                            it[module] = sourceModuleId
                         } get SourceClassesTable.id
                     }
                 }
@@ -124,6 +124,14 @@ class DBResultWriter(connectionString: String) : ResultWriter {
         }
     }
 
+    private fun insertModuleIfNew(moduleInfo: ModuleInfo, projectId: Int): Int =
+        lastRecordedValues.moduleIds.getOrPut(moduleInfo.name) {
+            ModulesTable.insert {
+                it[name] = moduleInfo.name
+                it[project] = projectId
+            } get ModulesTable.id
+        }
+
     /**
      * Checks if the values is already in DB to avoid entity duplication.
      */
@@ -155,8 +163,8 @@ class DBResultWriter(connectionString: String) : ResultWriter {
     private data class LastRecordedValues(
         val sourceClassInfo: ValueAndId<SourceClassInfo> = ValueAndId(),
         val classInfo: ValueAndId<TestClassInfo> = ValueAndId(),
-        val moduleInfo: ValueAndId<ModuleInfo> = ValueAndId(),
         val projectInfo: ValueAndId<ProjectInfo> = ValueAndId(),
+        val moduleIds: MutableMap<String, Int> = mutableMapOf()
     )
 
     private data class ValueAndId<T>(var value: T? = null, var id: Int = 0)
