@@ -5,6 +5,8 @@
 
 ```kute``` is a library that collects unit tests from Java and Kotlin repositories.
 
+It works with [JUnit](https://junit.org/), [TestNG](https://testng.org/), and [kotlin.test](https://kotlinlang.org/api/latest/kotlin.test/) libraries.
+
 It automatically downloads projects from GitHub, parses source code to identify unit tests, searches for the
 corresponding source methods, collects some metadata about the code, and stores the information in one of the following
 formats: ```JSON```, ```CSV```, ```SQLite```.
