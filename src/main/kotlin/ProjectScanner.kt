@@ -1,55 +1,58 @@
 import mu.KotlinLogging
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.TextProgressMonitor
+import org.jetbrains.kotlin.utils.identity
 import parsers.Lang
 import parsers.createParser
 import java.io.File
 import java.io.Writer
-import java.util.concurrent.BlockingQueue
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
 private val logger = KotlinLogging.logger {}
 
-class ProjectScanner private constructor(
+class ProjectScanner constructor(
     private val repoStorage: File,
     private val taskExecutor: TaskExecutor,
-    private val cleanupClonedRepos: Boolean
+    private val cleanupClonedRepos: Boolean,
+    private val processingTaskUpdater: (Callable<List<TestMethodInfo>>) -> Callable<List<TestMethodInfo>>,
+    private val langs: Array<Lang> = Lang.values()
 ) {
-    private val langs = Lang.values()
     constructor(repoStorage: File, ioThreads: Int, cpuThreads: Int, cleanupClonedRepos: Boolean)
-            : this(repoStorage, TaskExecutor(ioThreads, cpuThreads), cleanupClonedRepos)
+            : this(repoStorage, TaskExecutor(ioThreads, cpuThreads), cleanupClonedRepos, identity())
 
-    fun scanProject(path: String, tasks: BlockingQueue<Future<List<TestMethodInfo>>>): Boolean {
+    fun scanProject(
+        path: String,
+        processingTaskCallback: (String, Future<List<TestMethodInfo>>) -> Unit
+    ): Future<out Any>? {
         if (path.startsWith("https://")) {
             GitRepoDownloadingTask(path, repoStorage).takeIf { it.project.name.isNotEmpty() }?.let { downloadingTask ->
-                taskExecutor.runDownloadingTask(downloadingTask)
+                return taskExecutor.runDownloadingTask(downloadingTask)
                     .handle { repoPath, ex ->
-                        tasks += if (ex != null) {
+                        val processingTask = if (ex != null) {
                             CompletableFuture.failedFuture(ex)
                         } else {
                             taskExecutor.runComputationTask(
-                                ProjectProcessingTask(repoPath, downloadingTask.project, path, cleanupClonedRepos, langs)
+                                createProcessingTask(repoPath, downloadingTask.project, path, cleanupClonedRepos)
                             )
                         }
+                        processingTaskCallback(path, processingTask)
                     }
-                return true
             } ?: logger.warn { "Could not extract project by URL: $path" }
         } else if (path.isNotBlank()) {
             val directory = File(path)
             when {
                 directory.isDirectory -> {
-                    tasks += taskExecutor.runComputationTask(
-                        ProjectProcessingTask(directory, Project(directory.name), path, deleteAfterProcessing = false, langs)
-                    )
-                    return true
+                    return taskExecutor.runComputationTask(
+                        createProcessingTask(directory, Project(directory.name), path, deleteAfterProcessing = false)
+                    ).also { processingTaskCallback(path, it) }
                 }
                 directory.isFile -> logger.warn { "Path to project must be a directory, but file provided: $path" }
                 else -> logger.warn { "Directory doesn't exist: $path" }
             }
         }
-        return false
+        return null
     }
 
     private class GitRepoDownloadingTask(private val url: String, private val targetDir: File) : Callable<File> {
@@ -91,6 +94,15 @@ class ProjectScanner private constructor(
 
         override fun flush() {}
     }
+
+    private fun createProcessingTask(
+        path: File,
+        project: Project,
+        originalPath: String,
+        deleteAfterProcessing: Boolean
+    ) = processingTaskUpdater(
+        ProjectProcessingTask(path, project, originalPath, deleteAfterProcessing, langs)
+    )
 
     private class ProjectProcessingTask(
         private val path: File,

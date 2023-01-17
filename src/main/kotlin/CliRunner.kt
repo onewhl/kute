@@ -35,7 +35,9 @@ class CliRunner: CliktCommand() {
 
         val scanner = ProjectScanner(repoStorage, ioThreads, cpuThreads, cleanup)
         val tasks = LinkedBlockingQueue<Future<List<TestMethodInfo>>>()
-        val projectCount = projects.bufferedReader().useLines { it.count { path -> scanner.scanProject(path, tasks) } }
+        val projectCount = projects.bufferedReader().useLines { it.count {
+                path -> scanner.scanProject(path) { _, task -> tasks += task } != null }
+        }
 
         repeat(projectCount) {
             tasks.take().valueOrNull()?.let { resultWriter.writeSynchronized(it) }
